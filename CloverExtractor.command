@@ -81,7 +81,7 @@ class CloverExtractor:
                     part_list.append(p_text)
                 if len(part_list):
                     disk_string += "\n".join(part_list) + "\n"
-        height = len(disk_string.split("\n"))+11
+        height = len(disk_string.split("\n"))+13
         if height < 24:
             height = 24
         self.u.resize(80, height)
