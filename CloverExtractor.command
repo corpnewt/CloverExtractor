@@ -7,6 +7,9 @@ class CloverExtractor:
     def __init__(self, **kwargs):
         self.r  = run.Run()
         self.d  = disk.Disk()
+        self.dl = downloader.Downloader()
+        self.re = reveal.Reveal()
+        self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
@@ -294,6 +297,71 @@ class CloverExtractor:
             return out
         return self.get_clover_package()
 
+    def get_newest(self):
+        # Checks the latest available clover package and downloads it
+        self.u.head("Gathering Data...")
+        json_data = self.dl.get_string(self.clover_url)
+        if not json_data or not len(json_data):
+            print("Error retrieving data!")
+            print(" ")
+            self.u.grab("Press [enter] to return to main...")
+            return
+        try:
+            j = json.loads(json_data)
+        except:
+            print("Error serializing json data!")
+            print(" ")
+            self.u.grab("Press [enter] to return to main...")
+            return
+        dl_link = next((x.get("browser_download_url", None) for x in j.get("assets", []) if x.get("browser_download_url", "").lower().endswith(".pkg")), None)
+        if not dl_link:
+            print("Error locating download link!")
+            print(" ")
+            self.u.grab("Press [enter] to return to main...")
+            return
+        # Show the version and description
+        self.u.head("Latest Clover Package")
+        print(" ")
+        print("Latest:  {}".format(os.path.basename(dl_link)))
+        if j.get("body", None):
+            print("Changes: {}".format(j.get("body", "")))
+        print(" ")
+        print("D. Download")
+        print("M. Main")
+        print("Q. Quit")
+        print(" ")
+        menu = self.u.grab("Please select an option:  ")
+        if not len(menu):
+            self.get_newest()
+            return
+        if menu == "q":
+            self.u.custom_quit()
+        if menu == "m":
+            return
+        if menu == "d":
+            self.download_clover(dl_link)
+            return
+        self.get_newest()
+
+    def download_clover(self, url):
+        # Actually downloads clover
+        self.u.head("Downloading {}".format(os.path.basename(url)))
+        print("")
+        t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
+        t_path   = os.path.join(t_folder, os.path.basename(url))
+        if not os.path.isdir(t_folder):
+            os.mkdir(t_folder)
+        out = self.dl.stream_to_file(url, t_path)
+        if not out:
+            print("Something went wrong!")
+            print(" ")
+            self.u.grab("Press [enter] to return to main...")
+            return
+        self.re.reveal(t_path)
+        self.u.head("Downloaded {}".format(os.path.basename(url)))
+        print("")
+        self.u.grab("Done!", timeout=5)
+
     def main(self):
         while True:
             self.u.head("Clover Extractor")
@@ -307,9 +375,11 @@ class CloverExtractor:
             else:
                 print("EFI:     {}".format(self.efi))
             print(" ")
-            print("1. Select Package")
-            print("2. Select EFI")
-            print("3. Extract Clover")
+            print("P. Select Package")
+            print("E. Select EFI")
+            print("X. Extract Clover")
+            print(" ")
+            print("D. Download Newest Clover (Dids' Repo)")
             print(" ")
             print("Q. Quit")
             print(" ")
@@ -319,11 +389,13 @@ class CloverExtractor:
             
             if menu.lower() == "q":
                 self.u.custom_quit()
-            elif menu == "1":
+            elif menu == "d":
+                self.get_newest()
+            elif menu == "p":
                 self.clover = self.get_clover_package()
-            elif menu == "2":
+            elif menu == "e":
                 self.efi = self.get_efi()
-            elif menu == "3":
+            elif menu == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
                     if not self.clover:
