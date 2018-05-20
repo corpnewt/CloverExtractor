@@ -151,6 +151,10 @@ class Disk:
         if not disk or not len(str(disk)):
             return None
         disk = disk.lower()
+        if disk.startswith("/dev/r"):
+            disk = disk[len("/dev/r"):]
+        elif disk.startswith("/dev/"):
+            disk = disk[len("/dev/"):]
         if disk in self.disks.get("AllDisks", []):
             return disk
         for d in self.disks.get("AllDisksAndPartitions", []):
