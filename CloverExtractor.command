@@ -297,34 +297,37 @@ class CloverExtractor:
             return out
         return self.get_clover_package()
 
-    def get_newest(self):
-        # Checks the latest available clover package and downloads it
-        self.u.head("Gathering Data...")
+    def get_dl_info(self):
+        # Returns the latest download package and info in a
+        # dictionary:  { "url" : dl_url, "info" : update_info }
         json_data = self.dl.get_string(self.clover_url)
         if not json_data or not len(json_data):
-            print("Error retrieving data!")
-            print(" ")
-            self.u.grab("Press [enter] to return to main...")
-            return
+            return None
         try:
             j = json.loads(json_data)
         except:
-            print("Error serializing json data!")
-            print(" ")
-            self.u.grab("Press [enter] to return to main...")
-            return
+            return None
         dl_link = next((x.get("browser_download_url", None) for x in j.get("assets", []) if x.get("browser_download_url", "").lower().endswith(".pkg")), None)
         if not dl_link:
-            print("Error locating download link!")
+            return None
+        return { "url" : dl_link, "name" : os.path.basename(dl_link), "info" : j.get("body", None) }
+
+    def get_newest(self):
+        # Checks the latest available clover package and downloads it
+        self.u.head("Gathering Data...")
+        print(" ")
+        j = self.get_dl_info()
+        if not j:
+            print("Error retrieving info!")
             print(" ")
-            self.u.grab("Press [enter] to return to main...")
+            self.u.grab("Press [enter] to return...")
             return
         # Show the version and description
         self.u.head("Latest Clover Package")
         print(" ")
-        print("Latest:  {}".format(os.path.basename(dl_link)))
-        if j.get("body", None):
-            print("Changes: {}".format(j.get("body", "")))
+        print("Latest:  {}".format(os.path.basename(j["url"])))
+        if j["info"]:
+            print("Changes: {}".format(j["info"]))
         print(" ")
         print("D. Download")
         print("M. Main")
@@ -343,7 +346,7 @@ class CloverExtractor:
             return
         self.get_newest()
 
-    def download_clover(self, url):
+    def download_clover(self, url, quiet = False):
         # Actually downloads clover
         self.u.head("Downloading {}".format(os.path.basename(url)))
         print("")
@@ -356,16 +359,36 @@ class CloverExtractor:
             print("Something went wrong!")
             print(" ")
             self.u.grab("Press [enter] to return to main...")
-            return
+            return None
         self.re.reveal(t_path)
         self.u.head("Downloaded {}".format(os.path.basename(url)))
         print("")
-        self.u.grab("Done!", timeout=5)
+        if not quiet:
+            self.u.grab("Done!", timeout=5)
+        return t_path
+
+    def auto_update(self, url, disk):
+        # Downloads clover, then auto installs to the target drive
+        package = self.download_clover(url, True)
+        if not package:
+            print("Something went wrong!")
+            print(" ")
+            self.u.grab("Press [enter] to return...")
+            return
+        self.mount_and_copy(disk, package)
+        print(" ")
+        self.u.grab("Press [enter] to return...")
 
     def main(self):
         while True:
             self.u.head("Clover Extractor")
             print(" ")
+            j = self.get_dl_info()
+            clover = self.get_uuid_from_bdmesg()
+            self.d.update()
+            if j:
+                print("Latest:  {} (powered by Dids)".format(j["name"]))
+                print(" ")
             if self.clover == None or not os.path.exists(self.clover):
                 print("Package: None")
             else:
@@ -378,6 +401,11 @@ class CloverExtractor:
             print("P. Select Package")
             print("E. Select EFI")
             print("X. Extract Clover")
+            print(" ")
+            print("Auto Download and Install to:")
+            print("B. Boot Drive's EFI")
+            if clover:
+                print("C. Booted Clover's EFI")
             print(" ")
             print("D. Download Newest Clover (Dids' Repo)")
             print(" ")
@@ -395,6 +423,10 @@ class CloverExtractor:
                 self.clover = self.get_clover_package()
             elif menu == "e":
                 self.efi = self.get_efi()
+            elif menu == "b":
+                self.auto_update(j["url"], self.d.get_efi("/"))
+            elif menu == "c" and clover:
+                self.auto_update(j["url"], self.d.get_efi(clover))
             elif menu == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
