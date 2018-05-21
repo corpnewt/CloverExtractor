@@ -348,6 +348,8 @@ class CloverExtractor:
 
     def download_clover(self, info, quiet = False):
         # Actually downloads clover
+        if not info:
+            return None
         self.u.head("Downloading {}".format(info["name"]))
         print("")
         t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
@@ -374,6 +376,8 @@ class CloverExtractor:
         # Downloads clover, then auto installs to the target drive
         package = self.download_clover(info, True)
         if not package:
+            self.u.head("Error Downloading Clover!")
+            print(" ")
             print("Something went wrong!")
             print(" ")
             self.u.grab("Press [enter] to return...")
