@@ -342,34 +342,37 @@ class CloverExtractor:
         if menu == "m":
             return
         if menu == "d":
-            self.download_clover(dl_link)
+            self.download_clover(j)
             return
         self.get_newest()
 
-    def download_clover(self, url, quiet = False):
+    def download_clover(self, info, quiet = False):
         # Actually downloads clover
-        self.u.head("Downloading {}".format(os.path.basename(url)))
+        self.u.head("Downloading {}".format(info["name"]))
         print("")
         t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
-        t_path   = os.path.join(t_folder, os.path.basename(url))
+        t_path   = os.path.join(t_folder, info["name"])
+        if os.path.exists(t_path):
+            # Already exists - just return it
+            return t_path
         if not os.path.isdir(t_folder):
             os.mkdir(t_folder)
-        out = self.dl.stream_to_file(url, t_path)
+        out = self.dl.stream_to_file(info["url"], t_path)
         if not out:
             print("Something went wrong!")
             print(" ")
             self.u.grab("Press [enter] to return to main...")
             return None
-        self.re.reveal(t_path)
-        self.u.head("Downloaded {}".format(os.path.basename(url)))
+        self.u.head("Downloaded {}".format(info["name"]))
         print("")
         if not quiet:
+            self.re.reveal(t_path)
             self.u.grab("Done!", timeout=5)
         return t_path
 
-    def auto_update(self, url, disk):
+    def auto_update(self, info, disk):
         # Downloads clover, then auto installs to the target drive
-        package = self.download_clover(url, True)
+        package = self.download_clover(info, True)
         if not package:
             print("Something went wrong!")
             print(" ")
@@ -424,9 +427,9 @@ class CloverExtractor:
             elif menu == "e":
                 self.efi = self.get_efi()
             elif menu == "b":
-                self.auto_update(j["url"], self.d.get_efi("/"))
+                self.auto_update(j, self.d.get_efi("/"))
             elif menu == "c" and clover:
-                self.auto_update(j["url"], self.d.get_efi(clover))
+                self.auto_update(j, self.d.get_efi(clover))
             elif menu == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
