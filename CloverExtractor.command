@@ -17,6 +17,22 @@ class CloverExtractor:
         self.bdmesg = self.get_binary("bdmesg")
         self.full = False
 
+    def get_version_from_bdmesg(self):
+        if not self.bdmesg:
+            return None
+        # Get bdmesg output - then parse for SelfDevicePath
+        bdmesg = self.r.run({"args":[self.bdmesg]})[0]
+        if not "Starting Clover revision: " in bdmesg:
+            # Not found
+            return None
+        try:
+            # Split to just the contents of that line
+            rev = bdmesg.split("Starting Clover revision: ")[1].split("on")[0]
+            return rev
+        except:
+            pass
+        return None
+
     def get_uuid_from_bdmesg(self):
         if not self.bdmesg:
             return None
@@ -300,7 +316,7 @@ class CloverExtractor:
     def get_dl_info(self):
         # Returns the latest download package and info in a
         # dictionary:  { "url" : dl_url, "info" : update_info }
-        json_data = self.dl.get_string(self.clover_url)
+        json_data = self.dl.get_string(self.clover_url, False)
         if not json_data or not len(json_data):
             return None
         try:
@@ -392,9 +408,13 @@ class CloverExtractor:
             print(" ")
             j = self.get_dl_info()
             clover = self.get_uuid_from_bdmesg()
+            vers   = self.get_version_from_bdmesg()
             self.d.update()
+            if vers:
+                print("Booted:  {}".format(vers))
             if j:
                 print("Latest:  {} (powered by Dids)".format(j["name"]))
+            if vers or j:
                 print(" ")
             if self.clover == None or not os.path.exists(self.clover):
                 print("Package: None")
