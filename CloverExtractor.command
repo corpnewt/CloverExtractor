@@ -353,11 +353,11 @@ class CloverExtractor:
         if not len(menu):
             self.get_newest()
             return
-        if menu == "q":
+        if menu.lower() == "q":
             self.u.custom_quit()
-        if menu == "m":
+        if menu.lower() == "m":
             return
-        if menu == "d":
+        if menu.lower() == "d":
             self.download_clover(j)
             return
         self.get_newest()
@@ -444,17 +444,17 @@ class CloverExtractor:
             
             if menu.lower() == "q":
                 self.u.custom_quit()
-            elif menu == "d":
+            elif menu.lower() == "d":
                 self.get_newest()
-            elif menu == "p":
+            elif menu.lower() == "p":
                 self.clover = self.get_clover_package()
-            elif menu == "e":
+            elif menu.lower() == "e":
                 self.efi = self.get_efi()
-            elif menu == "b":
+            elif menu.lower() == "b":
                 self.auto_update(j, self.d.get_efi("/"))
-            elif menu == "c" and clover:
+            elif menu.lower() == "c" and clover:
                 self.auto_update(j, self.d.get_efi(clover))
-            elif menu == "x":
+            elif menu.lower() == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
                     if not self.clover:
