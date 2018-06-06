@@ -14,6 +14,7 @@ class CloverExtractor:
         self.clover = None
         self.efi    = None
         # Get the tools we need
+        self.script_folder = "Scripts"
         self.bdmesg = self.get_binary("bdmesg")
         self.full = False
 
@@ -160,7 +161,7 @@ class CloverExtractor:
         if not quiet:
             print(message)
 
-    def mount_and_copy(self, disk, package, quiet = False):
+    def mount_and_copy(self, disk, package, archive = False, quiet = False):
         # Mounts the passed disk and extracts the package target to the destination
         self.d.update()
         if not quiet:
@@ -212,15 +213,53 @@ class CloverExtractor:
                 self.qprint("Unknown BOOTX64.efi version - bypassing in case it's not Clover...", quiet)
             else:
                 self.qprint("Found BOOTX64.efi Version: {}".format(got_boot_v), quiet)
-        # Remove the old versions first, then copy new versions
+        if archive:
+            # Rename the old version to its version number
+            try:
+                self.qprint("Renaming CLOVERX64.efi to CLOVERX64_r{}.efi".format(got_clover_v), quiet)
+                old_path = os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi")
+                new_path = os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64_r{}.efi".format(got_clover_v))
+                if os.path.exists(new_path):
+                    # Already exists, overwrite it
+                    self.qprint("CLOVERX64_r{}.efi already exists - removing...".format(got_clover_v), quiet)
+                    os.remove(new_path)
+                os.rename(
+                    os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"),
+                    os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64_r{}.efi".format(got_clover_v))    
+                )
+                if got_boot and got_boot_v:
+                    self.qprint("Renaming BOOTX64.efi to BOOTX64_r{}.efi".format(got_boot_v), quiet)
+                    old_path = os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi")
+                    new_path = os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64_r{}.efi".format(got_boot_v))
+                    if os.path.exists(new_path):
+                        # Already exists, overwrite it
+                        self.qprint("BOOTX64_r{}.efi already exists - removing...".format(got_boot_v), quiet)
+                        os.remove(new_path)
+                    os.rename(
+                        os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"),
+                        os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64_r{}.efi".format(got_boot_v))    
+                    )
+            except Exception as e:
+                print(str(e))
+                shutil.rmtree(temp)
+                return False
+        else:
+            # Remove the old versions first, then copy new versions
+            try:
+                self.qprint("Removing CLOVERX64.efi version {}...".format(got_clover_v), quiet)
+                os.remove(os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
+                if got_boot and got_boot_v:
+                    self.qprint("Removing BOOTX64.efi version {}...".format(got_boot_v), quiet)
+                    os.remove(os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
+            except Exception as e:
+                print(str(e))
+                shutil.rmtree(temp)
+                return False
+        
         try:
-            self.qprint("Removing CLOVERX64.efi version {}...".format(got_clover_v), quiet)
-            os.remove(os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
             self.qprint("Copying CLOVERX64.efi version {}...".format(t_clover_v), quiet)
             shutil.copy(clover, os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
             if got_boot and got_boot_v:
-                self.qprint("Removing BOOTX64.efi version {}...".format(got_boot_v), quiet)
-                os.remove(os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
                 self.qprint("Copying BOOTX64.efi version {}...".format(t_clover_v), quiet)
                 shutil.copy(clover, os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
         except Exception as e:
@@ -388,7 +427,7 @@ class CloverExtractor:
             self.u.grab("Done!", timeout=5)
         return t_path
 
-    def auto_update(self, info, disk):
+    def auto_update(self, info, disk, archive):
         # Downloads clover, then auto installs to the target drive
         package = self.download_clover(info, True)
         if not package:
@@ -398,7 +437,7 @@ class CloverExtractor:
             print(" ")
             self.u.grab("Press [enter] to return...")
             return
-        self.mount_and_copy(disk, package)
+        self.mount_and_copy(disk, package, archive)
         print(" ")
         self.u.grab("Press [enter] to return...")
 
@@ -438,10 +477,17 @@ class CloverExtractor:
             print(" ")
             print("Q. Quit")
             print(" ")
+            print("Add A to X, B, or C (eg. XA) to also archive")
+            print(" ")
             menu = self.u.grab("Please select an option:  ")
+            archive = False
+            if len(menu) == 2 and "a" in menu.lower():
+                menu = menu.replace("A", "").replace("a", "")
+                archive = True
+            
             if not len(menu):
                 continue
-            
+
             if menu.lower() == "q":
                 self.u.custom_quit()
             elif menu.lower() == "d":
@@ -451,9 +497,9 @@ class CloverExtractor:
             elif menu.lower() == "e":
                 self.efi = self.get_efi()
             elif menu.lower() == "b":
-                self.auto_update(j, self.d.get_efi("/"))
+                self.auto_update(j, self.d.get_efi("/"), archive)
             elif menu.lower() == "c" and clover:
-                self.auto_update(j, self.d.get_efi(clover))
+                self.auto_update(j, self.d.get_efi(clover), archive)
             elif menu.lower() == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
@@ -464,7 +510,7 @@ class CloverExtractor:
                     if not self.efi:
                         continue
                 # If we made it here, we have both parts
-                self.mount_and_copy(self.efi, self.clover)
+                self.mount_and_copy(self.efi, self.clover, archive)
                 print(" ")
                 self.u.grab("Press [enter] to return...")
 
@@ -475,7 +521,7 @@ class CloverExtractor:
             efi = self.d.get_efi(pair[1])
             if efi:
                 try:
-                    self.mount_and_copy(self.d.get_efi(pair[1]), pair[0], True)
+                    self.mount_and_copy(self.d.get_efi(pair[1]), pair[0], False, True)
                 except Exception as e:
                     print(str(e))
 
