@@ -10,6 +10,8 @@ class Disk:
         self.os_version = ".".join(
             self.r.run({"args":["sw_vers", "-productVersion"]})[0].split(".")[:2]
         )
+        self.sudo_mount_version = "10.13.6"
+        self.sudo_mount_types   = ["efi"]
         self.apfs = {}
         self._update_disks()
 
@@ -81,6 +83,12 @@ class Disk:
         if not disk_id:
             return None
         return self.get_disk_info(disk_id).get("FilesystemName", None)
+
+    def get_disk_fs_type(self, disk):
+        disk_id = self.get_identifier(disk)
+        if not disk_id:
+            return None
+        return self.get_disk_info(disk_id).get("FilesystemType", None)
 
     def get_apfs(self):
         # Returns a dictionary object of apfs disks
@@ -268,7 +276,10 @@ class Disk:
         disk_id = self.get_identifier(disk)
         if not disk_id:
             return None
-        out = self.r.run({"args":[self.diskutil, "mount", disk_id]})
+        sudo = False
+        if not self._compare_versions(self.os_version, self.sudo_mount_version) and self.get_content(disk_id).lower() in self.sudo_mount_types:
+            sudo = True
+        out = self.r.run({"args":[self.diskutil, "mount", disk_id], "sudo":sudo})
         self._update_disks()
         return out
 
