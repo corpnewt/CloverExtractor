@@ -1,4 +1,4 @@
-import sys, os, time, re, json, datetime, ctypes, subprocess
+import sys, os, time, re, json, datetime
 
 if os.name == "nt":
     # Windows
@@ -20,58 +20,44 @@ class Utils:
             self.colors_dict = {}
         os.chdir(cwd)
 
-    def check_admin(self):
-        # Returns whether or not we're admin
-        try:
-            is_admin = os.getuid() == 0
-        except AttributeError:
-            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-        return is_admin
-
-    def elevate(self, file):
-        # Runs the passed file as admin
-        if self.check_admin():
-            return
-        if os.name == "nt":
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, file, None, 1)
-        else:
-            try:
-                p = subprocess.Popen(["which", "sudo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                c = p.communicate()[0].decode("utf-8", "ignore").replace("\n", "")
-                os.execv(c, [ sys.executable, 'python'] + sys.argv)
-            except:
-                exit(1)
-
-    def compare_versions(self, vers1, vers2):
+    def compare_versions(self, vers1, vers2, pad = -1):
         # Helper method to compare ##.## strings
         #
         # vers1 < vers2 = True
         # vers1 = vers2 = None
         # vers1 > vers2 = False
         #
-        # Check for equality first
-        if vers1 == vers2:
-            # Equal
-            return None
-        try:
-            v1_parts = [ int(x) for x in vers1.split(".") ]
-            v2_parts = [ int(x) for x in vers2.split(".") ]
-        except:
-            # Formatted wrong - return None
-            return None
-        total = len(v1_parts) if len(v1_parts) > len(v2_parts) else len(v2_parts)
-        for i in range(total):
-            if i >= len(v1_parts):
-                # v2 is longer
+        # Must be separated with a period
+        
+        # Sanitize the pads
+        pad = -1 if not type(pad) is int else pad
+        
+        # Cast as strings
+        vers1 = str(vers1)
+        vers2 = str(vers2)
+        
+        # Split to lists
+        v1_parts = vers1.split(".")
+        v2_parts = vers2.split(".")
+        
+        # Equalize lengths
+        if len(v1_parts) < len(v2_parts):
+            v1_parts.extend([str(pad) for x in range(len(v2_parts) - len(v1_parts))])
+        elif len(v2_parts) < len(v1_parts):
+            v2_parts.extend([str(pad) for x in range(len(v1_parts) - len(v2_parts))])
+        
+        # Iterate and compare
+        for i in range(len(v1_parts)):
+            # Remove non-numeric
+            v1 = ''.join(c for c in v1_parts[i] if c.isdigit())
+            v2 = ''.join(c for c in v2_parts[i] if c.isdigit())
+            # If empty - make it a pad var
+            v1 = pad if not len(v1) else v1
+            v2 = pad if not len(v2) else v2
+            # Compare
+            if int(v1) < int(v2):
                 return True
-            if i >= len(v2_parts):
-                # v1 is longer
-                return False
-            if v1_parts[i] < v2_parts[i]:
-                # v2 is newer
-                return True
-            if v1_parts[i] > v2_parts[i]:
-                # v1 is newer
+            elif int(v1) > int(v2):
                 return False
         # Never differed - return None, must be equal
         return None
