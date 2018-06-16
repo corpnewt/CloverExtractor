@@ -15,8 +15,26 @@ class CloverExtractor:
         self.efi    = None
         # Get the tools we need
         self.script_folder = "Scripts"
+        self.settings_file = os.path.join("Scripts", "settings.json")
         self.bdmesg = self.get_binary("bdmesg")
         self.full = False
+        cwd = os.getcwd()
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        if self.settings_file and os.path.exists(self.settings_file):
+            self.settings = json.load(open(self.settings_file))
+        else:
+            self.settings = {
+                # Default settings here
+                "select_efi_drivers" : True
+            }
+        os.chdir(cwd)
+
+    def flush_settings(self):
+        if self.settings_file:
+            cwd = os.getcwd()
+            os.chdir(os.path.dirname(os.path.realpath(__file__)))
+            json.dump(self.settings, open(self.settings_file, "w"))
+            os.chdir(cwd)
 
     def get_version_from_bdmesg(self):
         if not self.bdmesg:
@@ -179,104 +197,145 @@ class CloverExtractor:
                 print(out[1])
                 return False
             self.qprint(out[0].strip("\n"), quiet)
+            print(" ")
         # Create a temp folder
         temp = tempfile.mkdtemp()
-        clover = self.extract_clover(package, temp)
+        efi_drivers = self.extract_clover(package, temp)
+        clover = next((efi_drivers[x]["path"] for x in efi_drivers if os.path.basename(x.lower()) == "cloverx64.efi"), None)
+        print(" ")
         if not clover:
             print("Error locating CLOVERX64.efi in {}!".format(os.path.basename(package)))
-            shutil.rmtree(temp)
+            self.cleanup(temp, disk, mounted, quiet)
             return False
-        t_clover_v = self.get_clover_version(clover)
-        if not t_clover_v:
-            t_clover_v = "Unknown"
-        # Copy CLOVERX64.efi to the CLOVER and BOOT folders if they exist
         efi_mount = self.d.get_mount_point(disk)
         if not efi_mount:
             print("EFI at {} not mounted!".format(disk))
-            shutil.rmtree(temp)
+            self.cleanup(temp, disk, mounted, quiet)
             return False
-        got_clover = os.path.exists(os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
+
+        # Copy Clover
+        try:
+            c_out = self.copy_clover(clover, efi_mount, archive, quiet)
+        except Exception as e:
+            print(str(e))
+            c_out = False    
+        if self.settings.get("select_efi_drivers", True):
+            # Copy EFI Drivers
+            try:
+                self.copy_efi_drivers(efi_drivers, efi_mount, quiet)
+            except Exception as e:
+                print(str(e))
+
+        # Clean up
+        self.cleanup(temp, disk, mounted, quiet)
+        return c_out
+
+    def copy_clover(self, clover, efi_mount, archive, quiet):
+        c_path = os.path.join(efi_mount, "EFI", "CLOVER")
+        b_path = os.path.join(efi_mount, "EFI", "BOOT")
+        
+        out = True
+
+        t_clover_v = self.get_clover_version(clover)
+        if not t_clover_v:
+            t_clover_v = "Unknown"
+        
+        # Copy CLOVERX64.efi to the CLOVER and BOOT folders if they exist
+        got_clover = os.path.exists(os.path.join(c_path, "CLOVERX64.efi"))
+        got_boot   = os.path.exists(os.path.join(b_path, "BOOTX64.efi"))
         if not got_clover:
             print("CLOVERX64.efi does not exist!")
-            shutil.rmtree(temp)
-            return False
-        got_boot   = os.path.exists(os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
+            out = False
         # Check the got_clover and got_boot versions
-        got_clover_v = self.get_clover_version(os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
+        got_clover_v = self.get_clover_version(os.path.join(c_path, "CLOVERX64.efi"))
         if not got_clover_v:
             got_clover_v = "Unknown"
-        self.qprint("Found CLOVERX64.efi Version: {}".format(got_clover_v), quiet)
+        self.qprint("     Found CLOVERX64.efi version: {}".format(got_clover_v), quiet)
         got_boot_v = None
         if got_boot:
-            got_boot_v = self.get_clover_version(os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
+            got_boot_v = self.get_clover_version(os.path.join(b_path, "BOOTX64.efi"))
             if not got_boot_v:
-                self.qprint("Unknown BOOTX64.efi version - bypassing in case it's not Clover...", quiet)
+                self.qprint("   Unknown BOOTX64.efi version - bypassing in case it's not Clover...", quiet)
             else:
-                self.qprint("Found BOOTX64.efi Version: {}".format(got_boot_v), quiet)
+                self.qprint("     Found BOOTX64.efi version: {}".format(got_boot_v), quiet)
         if archive:
             # Rename the old version to its version number
             try:
-                self.qprint("Renaming CLOVERX64.efi to CLOVERX64_r{}.efi".format(got_clover_v), quiet)
-                old_path = os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi")
-                new_path = os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64_r{}.efi".format(got_clover_v))
+                self.qprint("  Renaming CLOVERX64.efi to CLOVERX64_r{}.efi".format(got_clover_v), quiet)
+                old_path = os.path.join(c_path, "CLOVERX64.efi")
+                new_path = os.path.join(c_path, "CLOVERX64_r{}.efi".format(got_clover_v))
                 if os.path.exists(new_path):
                     # Already exists, overwrite it
                     self.qprint("CLOVERX64_r{}.efi already exists - removing...".format(got_clover_v), quiet)
                     os.remove(new_path)
                 os.rename(
-                    os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"),
-                    os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64_r{}.efi".format(got_clover_v))    
+                    os.path.join(c_path, "CLOVERX64.efi"),
+                    os.path.join(c_path, "CLOVERX64_r{}.efi".format(got_clover_v))    
                 )
                 if got_boot and got_boot_v:
-                    self.qprint("Renaming BOOTX64.efi to BOOTX64_r{}.efi".format(got_boot_v), quiet)
-                    old_path = os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi")
-                    new_path = os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64_r{}.efi".format(got_boot_v))
+                    self.qprint("  Renaming BOOTX64.efi to BOOTX64_r{}.efi".format(got_boot_v), quiet)
+                    old_path = os.path.join(b_path, "BOOTX64.efi")
+                    new_path = os.path.join(b_path, "BOOTX64_r{}.efi".format(got_boot_v))
                     if os.path.exists(new_path):
                         # Already exists, overwrite it
                         self.qprint("BOOTX64_r{}.efi already exists - removing...".format(got_boot_v), quiet)
                         os.remove(new_path)
                     os.rename(
-                        os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"),
-                        os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64_r{}.efi".format(got_boot_v))    
+                        os.path.join(b_path, "BOOTX64.efi"),
+                        os.path.join(b_path, "BOOTX64_r{}.efi".format(got_boot_v))    
                     )
             except Exception as e:
                 print(str(e))
-                shutil.rmtree(temp)
-                return False
+                out = False
         else:
             # Remove the old versions first, then copy new versions
             try:
-                self.qprint("Removing CLOVERX64.efi version {}...".format(got_clover_v), quiet)
-                os.remove(os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
+                self.qprint("  Removing CLOVERX64.efi version: {}...".format(got_clover_v), quiet)
+                os.remove(os.path.join(c_path, "CLOVERX64.efi"))
                 if got_boot and got_boot_v:
-                    self.qprint("Removing BOOTX64.efi version {}...".format(got_boot_v), quiet)
-                    os.remove(os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
+                    self.qprint("  Removing BOOTX64.efi version: {}...".format(got_boot_v), quiet)
+                    os.remove(os.path.join(b_path, "BOOTX64.efi"))
             except Exception as e:
                 print(str(e))
-                shutil.rmtree(temp)
-                return False
-        
+                out = False
         try:
-            self.qprint("Copying CLOVERX64.efi version {}...".format(t_clover_v), quiet)
-            shutil.copy(clover, os.path.join(efi_mount, "EFI", "CLOVER", "CLOVERX64.efi"))
+            self.qprint("   Copying CLOVERX64.efi version: {}...".format(t_clover_v), quiet)
+            shutil.copy(clover, os.path.join(c_path, "CLOVERX64.efi"))
             if got_boot and got_boot_v:
-                self.qprint("Copying BOOTX64.efi version {}...".format(t_clover_v), quiet)
-                shutil.copy(clover, os.path.join(efi_mount, "EFI", "BOOT", "BOOTX64.efi"))
+                self.qprint("   Copying BOOTX64.efi version: {}...".format(t_clover_v), quiet)
+                shutil.copy(clover, os.path.join(b_path, "BOOTX64.efi"))
         except Exception as e:
             print(str(e))
-            shutil.rmtree(temp)
+            out = False
+        return out
+
+    def copy_efi_drivers(self, efi_list, efi_path, quiet):
+        d64 = os.path.join(efi_path, "EFI", "CLOVER", "drivers64UEFI")
+        if not os.path.exists(d64):
+            # Nothing to do here
             return False
-        # Unmount if EFI wasn't mounted
-        if not mounted:
+        # Get the defaults
+        installed = sorted([x.lower() for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
+        to_copy   = sorted([x for x in efi_list if x.lower() in installed])
+
+        print("\nFound {} of {} efi driver{} - replacing...\n".format(len(to_copy), len(installed), "" if len(installed) == 1 else "s"))
+
+        for f in to_copy:
+            self.qprint(" Replacing {}...".format(f), quiet)
+            os.remove(os.path.join(d64, f))
+            shutil.copy(efi_list[f]["path"], os.path.join(d64, f))
+        return True
+
+    def cleanup(self, temp, disk, mount_status, quiet):
+        shutil.rmtree(temp)
+        if not mount_status:
+            print(" ")
             self.qprint("Unmounting {}...".format(disk), quiet)
             out = self.d.unmount_partition(disk)
             if not out[2] == 0:
                 print(out[1])
                 return False
             self.qprint(out[0].strip("\n"), quiet)
-        # Success!
-        shutil.rmtree(temp)
-        return True
 
     def get_clover_version(self, f):
         # Attempts to get the clover version via binary string searching
@@ -316,24 +375,39 @@ class CloverExtractor:
             os.chdir(cwd)
             print("pkgutil", out[1])
             return False
-        
-        if not os.path.isdir(os.path.join(temp, "pkg", "EFIFolder.pkg")):
-            os.chdir(cwd)
-            print("EFIFolder.pkg not found")
-            return False
-        
-        os.chdir(os.path.join(temp, "pkg", "EFIFolder.pkg"))
-        out = self.r.run({"args":["tar", "xvf", "Payload"]})
-        if out[2] != 0:
-            print("tar", out[1])
-            os.chdir(cwd)
-            return False
-        os.chdir(cwd)
-        target = os.path.join(temp, "pkg", "EFIFolder.pkg", "EFI", "CLOVER", "CLOVERX64.efi")
-        if not os.path.exists(target):
-            print("CLOVERX64.efi not found")
-            return False
-        return target
+
+        # Iterate all packages - and extract them all
+        c = os.getcwd()
+        e = os.path.join(c, "efi_drivers")
+        el = {}
+        if not os.path.exists(e):
+            os.mkdir(e)
+        for pkg in [x for x in sorted(os.listdir(os.path.join(temp, "pkg"))) if x.lower().endswith(".pkg")]:
+            os.chdir(os.path.join(temp, "pkg", pkg))
+            if not pkg.lower() == "efifolder.pkg" and not self.settings.get("select_efi_drivers", True):
+                # We only want Clover
+                continue
+            print("Extracting {}...".format(pkg))
+            try:
+                out = self.r.run({"args":["tar", "xvf", "Payload"]})
+            except:
+                out = ("", "Failed to extract {}".format(pkg), 1)
+            if out[2] != 0:
+                print(out[2])
+                continue
+            # Check for Clover
+            if os.path.exists(os.path.join(temp, "pkg", pkg, "EFI", "CLOVER", "CLOVERX64.efi")):
+                os.rename(os.path.join(temp, "pkg", pkg, "EFI", "CLOVER", "CLOVERX64.efi"), os.path.join(e, "CLOVERX64.efi"))
+                el["CLOVERX64.efi"] = { "path" : os.path.join(e, "CLOVERX64.efi"), "show" : False, "selected" : False }
+            # Check for other EFI drivers
+            for e_file in [x for x in os.listdir(os.path.join(temp, "pkg", pkg)) if x.lower().endswith(".efi")]:
+                os.rename(os.path.join(temp, "pkg", pkg, e_file), os.path.join(e, e_file))
+                el[e_file] = { "path" : os.path.join(e, e_file), "show" : True, "selected" : False }
+        os.chdir(c)
+
+        if not len(el):
+            print("No efi drivers found!")
+        return el
 
     def get_clover_package(self):
         # Returns a clover package
@@ -475,10 +549,12 @@ class CloverExtractor:
             print(" ")
             print("D. Download Newest Clover (Dids' Repo)")
             print(" ")
+            print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
+            print(" ")
             print("Q. Quit")
             print(" ")
             print("Add A to X, B, or C (eg. XA) to also archive")
-            print(" ")
+            self.u.resize(80, 27)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -500,6 +576,9 @@ class CloverExtractor:
                 self.auto_update(j, self.d.get_efi("/"), archive)
             elif menu.lower() == "c" and clover:
                 self.auto_update(j, self.d.get_efi(clover), archive)
+            elif menu.lower() == "t":
+                self.settings["select_efi_drivers"] = not self.settings.get("select_efi_drivers", True)
+                self.flush_settings()
             elif menu.lower() == "x":
                 if not self.clover or not os.path.exists(self.clover):
                     self.clover = self.get_clover_package()
