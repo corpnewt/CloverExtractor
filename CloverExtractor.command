@@ -310,21 +310,25 @@ class CloverExtractor:
         return out
 
     def copy_efi_drivers(self, efi_list, efi_path, quiet):
-        d64 = os.path.join(efi_path, "EFI", "CLOVER", "drivers64UEFI")
-        if not os.path.exists(d64):
-            # Nothing to do here
-            return False
-        # Get the defaults
-        installed = sorted([x.lower() for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
-        to_copy   = sorted([x for x in efi_list if x.lower() in installed])
+        for d in ["drivers64", "drivers32", "drivers64UEFI", "drivers32UEFI"]:
+            d64 = os.path.join(efi_path, "EFI", "CLOVER", d)
+            if not os.path.exists(d64):
+                # Nothing to do here
+                continue
+            # Get the defaults
+            installed = sorted([x.lower() for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
+            to_copy   = sorted([x for x in efi_list if x.lower() in installed])
 
-        print("\nFound {} of {} efi driver{} - replacing...\n".format(len(to_copy), len(installed), "" if len(installed) == 1 else "s"))
+            if not len(to_copy) and len(installed):
+                print("\nFound 0 of {} efi driver{} in {} - skipping...\n".format(len(installed), "" if len(installed) == 1 else "s", d))
+                continue
 
-        for f in to_copy:
-            self.qprint(" Replacing {}...".format(f), quiet)
-            os.remove(os.path.join(d64, f))
-            shutil.copy(efi_list[f]["path"], os.path.join(d64, f))
-        return True
+            print("\nFound {} of {} efi driver{} in {} - replacing...\n".format(len(to_copy), len(installed), "" if len(installed) == 1 else "s", d))
+
+            for f in to_copy:
+                self.qprint(" Replacing {}...".format(f), quiet)
+                os.remove(os.path.join(d64, f))
+                shutil.copy(efi_list[f]["path"], os.path.join(d64, f))
 
     def cleanup(self, temp, disk, mount_status, quiet):
         shutil.rmtree(temp)
