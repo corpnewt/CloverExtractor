@@ -319,7 +319,11 @@ class CloverExtractor:
             installed = sorted([x.lower() for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
             to_copy   = sorted([x for x in efi_list if x.lower() in installed])
 
-            if not len(to_copy) and len(installed):
+            if not len(installed):
+                # Nothing to replace
+                continue
+
+            if not len(to_copy):
                 print("\nFound 0 of {} efi driver{} in {} - skipping...\n".format(len(installed), "" if len(installed) == 1 else "s", d))
                 continue
 
