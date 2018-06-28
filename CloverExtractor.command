@@ -9,6 +9,7 @@ class CloverExtractor:
         self.d  = disk.Disk()
         self.dl = downloader.Downloader()
         self.re = reveal.Reveal()
+        self.c  = cloverbuild.CloverBuild()
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
@@ -509,6 +510,35 @@ class CloverExtractor:
             self.u.grab("Done!", timeout=5)
         return t_path
 
+    def build_clover(self):
+        # Builds clover from soure - or attempts to...
+        self.u.head("Building Clover")
+        print("")
+        out = self.c.build_clover()
+        if not out:
+            print("Looks like something went wrong building Clover...")
+            return None
+        # Let's copy clover into our Clover folder
+        t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
+        c_name = os.path.basename(out)
+        o_path = os.path.join(t_folder, c_name)
+        shutil.copy(out, o_path)
+        return o_path
+
+    def auto_build(self, disk, archive):
+        # Builds clover, then auto installs to the target drive
+        package = self.build_clover()
+        if not package:
+            self.u.head("Error Building Clover!")
+            print("")
+            print("Something went wrong!")
+            print("")
+            self.u.grab("Press [enter] to return...")
+            return
+        self.mount_and_copy(disk, package, archive)
+        print(" ")
+        self.u.grab("Press [enter] to return...")
+
     def auto_update(self, info, disk, archive):
         # Downloads clover, then auto installs to the target drive
         package = self.download_clover(info, True)
@@ -549,20 +579,26 @@ class CloverExtractor:
             print("P. Select Package")
             print("E. Select EFI")
             print("X. Extract Clover")
-            print(" ")
+            print("")
             print("Auto Download and Install to:")
-            print("B. Boot Drive's EFI")
+            print("  B. Boot Drive's EFI")
             if clover:
-                print("C. Booted Clover's EFI")
+                print("  C. Booted Clover's EFI")
             print(" ")
+            print("Build From Source and Install to:")
+            print("  BB. Boot Drive's EFI")
+            if clover:
+                print("  BC. Booted Clover's EFI")
+            print("")
             print("D. Download Newest Clover (Dids' Repo)")
-            print(" ")
+            print("CC. Compile Clover From Source")
+            print("")
             print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
-            print(" ")
+            print("")
             print("Q. Quit")
-            print(" ")
-            print("Add A to X, B, or C (eg. XA) to also archive")
-            self.u.resize(80, 27)
+            print("")
+            print("Add A to X, B, C, BB, or BC (eg. XBC) to also archive")
+            self.u.resize(80, 32)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -580,6 +616,12 @@ class CloverExtractor:
                 self.clover = self.get_clover_package()
             elif menu.lower() == "e":
                 self.efi = self.get_efi()
+            elif menu.lower() == "cc":
+                self.build_clover()
+            elif menu.lower() == "bb":
+                self.auto_build(self.d.get_efi("/"), archive)
+            elif menu.lower() == "bc":
+                self.auto_build(self.d.get_efi(clover), archive)
             elif menu.lower() == "b":
                 self.auto_update(j, self.d.get_efi("/"), archive)
             elif menu.lower() == "c" and clover:
