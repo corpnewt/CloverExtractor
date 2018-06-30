@@ -658,7 +658,6 @@ if __name__ == '__main__':
     c = CloverExtractor()
     # Check for args
     if len(sys.argv) > 1:
-        pass
         # We got command line args!
         # CloverExtractor.command /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
         c.quiet_copy(sys.argv[1:])
