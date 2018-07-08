@@ -11,6 +11,7 @@ class CloverExtractor:
         self.re = reveal.Reveal()
         self.c  = cloverbuild.CloverBuild()
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
+        self.clover_repo = "https://svn.code.sf.net/p/cloverefiboot/code"
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
@@ -450,6 +451,15 @@ class CloverExtractor:
             return None
         return { "url" : dl_link, "name" : os.path.basename(dl_link), "info" : j.get("body", None) }
 
+    def get_clover_info(self):
+        # Returns the latest Clover version
+        clover_data = self.dl.get_string(self.clover_repo, False)
+        try:
+            c = clover_data.lower().split("revision ")[1].split(":")[0]
+        except:
+            c = "Unknown"
+        return c
+
     def get_newest(self):
         # Checks the latest available clover package and downloads it
         self.u.head("Gathering Data...")
@@ -558,14 +568,17 @@ class CloverExtractor:
             self.u.head("Clover Extractor")
             print(" ")
             j = self.get_dl_info()
+            c = self.get_clover_info()
             clover = self.get_uuid_from_bdmesg()
             vers   = self.get_version_from_bdmesg()
             self.d.update()
+            if c:
+                print("Latest Clover:     {}".format(c))
             if vers:
-                print("Booted:  {}".format(vers))
+                print("Currently Booted:  {}".format(vers))
             if j:
-                print("Latest:  {} (powered by Dids)".format(j["name"]))
-            if vers or j:
+                print("Latest From Dids:  {}".format(j["name"]))
+            if vers or j or c:
                 print(" ")
             if self.clover == None or not os.path.exists(self.clover):
                 print("Package: None")
@@ -598,7 +611,7 @@ class CloverExtractor:
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. XBC) to also archive")
-            self.u.resize(80, 32)
+            self.u.resize(80, 33)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
