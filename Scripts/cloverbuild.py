@@ -40,6 +40,7 @@ class CloverBuild:
                     "out"  : "AptioFixPkg/UDK/Build/AptioFixPkg/RELEASE_XCODE5/X64",
                     "name" : ["AptioMemoryFix.efi", "AptioInputFix.efi"],
                     "run"  : "macbuild.tool",
+                    "env"  : {"FORCE_INSTALL":"1"},
                     "lang" : "bash"
                 },
                 {
@@ -48,6 +49,7 @@ class CloverBuild:
                     "out"  : "ApfsSupportPkg/UDK/Build/ApfsSupportPkg/RELEASE_XCODE5/X64",
                     "name" : ["ApfsDriverLoader.efi"],
                     "run"  : "macbuild.tool",
+                    "env"  : {"FORCE_INSTALL":"1"},
                     "lang" : "bash"
                 }
             ]
@@ -140,6 +142,10 @@ class CloverBuild:
                 if out[2] != 0:
                     print("Error cloning!")
                     continue
+            # Setup the env if available
+            if driver.get("env", None):
+                for e in driver["env"]:
+                    os.environ[e] = str(driver["env"][e])
             # cd
             os.chdir(driver["path"])
             # Check for updates
