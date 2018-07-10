@@ -460,6 +460,12 @@ class CloverExtractor:
             c = "Unknown"
         return c
 
+    def check_clover_folder(self):
+        t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
+        if not os.path.isdir(t_folder):
+            os.mkdir(t_folder)
+        return t_folder
+
     def get_newest(self):
         # Checks the latest available clover package and downloads it
         self.u.head("Gathering Data...")
@@ -500,13 +506,11 @@ class CloverExtractor:
             return None
         self.u.head("Downloading {}".format(info["name"]))
         print("")
-        t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
+        t_folder = self.check_clover_folder()
         t_path   = os.path.join(t_folder, info["name"])
         if os.path.exists(t_path):
             # Already exists - just return it
             return t_path
-        if not os.path.isdir(t_folder):
-            os.mkdir(t_folder)
         out = self.dl.stream_to_file(info["url"], t_path)
         if not out:
             print("Something went wrong!")
@@ -529,7 +533,7 @@ class CloverExtractor:
             print("Looks like something went wrong building Clover...")
             return None
         # Let's copy clover into our Clover folder
-        t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
+        t_folder = self.check_clover_folder()
         c_name = os.path.basename(out)
         o_path = os.path.join(t_folder, c_name)
         shutil.copy(out, o_path)
@@ -610,7 +614,7 @@ class CloverExtractor:
             print("")
             print("Q. Quit")
             print("")
-            print("Add A to X, B, C, BB, or BC (eg. XBC) to also archive")
+            print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
             self.u.resize(80, 33)
             menu = self.u.grab("Please select an option:  ")
             archive = False
