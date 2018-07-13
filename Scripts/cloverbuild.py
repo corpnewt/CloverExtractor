@@ -73,11 +73,14 @@ class CloverBuild:
         cwd = os.getcwd()
         os.chdir(self.udk_path)
         out = self.r.run([
+            {"args":["git", "reset", "--hard"],"stream":self.debug},
             {"args":["git", "pull"], "stream":self.debug},
             {"args":["git", "clean", "-fdx", "-e", "Clover/"], "stream":self.debug}
         ], True)
         os.chdir(cwd)
-        if out[len(out)-1][2] != 0:
+        if type(out) is list:
+            out = out[-1]
+        if out[2] != 0:
             print("Failed to update UDK2018!")
             return False
         return True
@@ -106,7 +109,9 @@ class CloverBuild:
             {"args":["svn", "cleanup", "--remove-unversioned"], "stream":self.debug}
         ], True)
         os.chdir(cwd)
-        if out[len(out)-1][2] != 0:
+        if type(out) is list:
+            out = out[-1]
+        if out[2] != 0:
             print("Failed to update Clover!")
             return False
         return True
@@ -149,6 +154,7 @@ class CloverBuild:
             # cd
             os.chdir(driver["path"])
             # Check for updates
+            self.r.run({"args":["git", "reset", "--hard"],"stream":self.debug})
             self.r.run({"args":["git", "pull"], "stream":self.debug})
             # Chmod
             self.r.run({"args":["chmod", "+x", driver["run"]]})
@@ -215,7 +221,9 @@ class CloverBuild:
             {"args":["bash", "ebuild.sh", "-cleanall"], "stream":self.debug},
             {"args":["bash", "ebuild.sh", "-fr"], "stream":self.debug}
         ], True)
-        if out[len(out)-1][2] != 0:
+        if type(out) is list:
+            out = out[-1]
+        if out[2] != 0:
             print("Failed to clean Clover!")
             return False
         # Build the EFI drivers
