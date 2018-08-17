@@ -45,9 +45,10 @@ class CloverBuild:
                     "lang" : "bash"
                 },
                 {
-                    "repo" : "https://github.com/acidanthera/ApfsSupportPkg",
-                    "path" : "ApfsSupportPkg", # Joined with source
-                    "out"  : "ApfsSupportPkg/UDK/Build/ApfsSupportPkg/RELEASE_XCODE5/X64",
+                    "repo" : "https://github.com/acidanthera/AppleSupportPkg",
+                    "path" : "AppleSupportPkg", # Joined with source
+                    # "out"  : "ApfsSupportPkg/UDK/Build/ApfsSupportPkg/RELEASE_XCODE5/X64",
+                    "out"  : "AppleSupportPkg/UDK/Build/AppleSupportPkg/RELEASE_XCODE5/X64",
                     # "name" : ["ApfsDriverLoader.efi", "AppleLoadImage.efi"],
                     "name" : ".efi", # Should copy all the .efi drivers into the package
                     "run"  : "macbuild.tool",
