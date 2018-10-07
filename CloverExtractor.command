@@ -5,18 +5,21 @@ import os, tempfile, datetime, shutil, time, plistlib, json, sys
 
 class CloverExtractor:
     def __init__(self, **kwargs):
+        self.script_folder = "Scripts"
         self.r  = run.Run()
         self.d  = disk.Disk()
         self.dl = downloader.Downloader()
         self.re = reveal.Reveal()
-        self.c  = cloverbuild.CloverBuild()
+        # Keep our source local
+        self.c  = cloverbuild.CloverBuild(
+            source=os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, "src")
+            )
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
         self.clover_repo = "https://svn.code.sf.net/p/cloverefiboot/code"
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
         # Get the tools we need
-        self.script_folder = "Scripts"
         self.settings_file = os.path.join("Scripts", "settings.json")
         self.bdmesg = self.get_binary("bdmesg")
         self.full = False
