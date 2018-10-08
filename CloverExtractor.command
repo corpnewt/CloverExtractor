@@ -569,6 +569,65 @@ class CloverExtractor:
         print(" ")
         self.u.grab("Press [enter] to return...")
 
+    def efi_driver_menu(self):
+        self.u.resize(80, 24)
+        self.u.head("EFI Drivers")
+        to_build = []
+        print("")
+        count = 0
+        for d in self.c.efi_drivers:
+            count += 1
+            print("{}. {}".format(count, d.get("path", "Unknown")))
+        print("")
+        print("A. Build All")
+        print("M. Main Menu")
+        print("Q. Quit")
+        print("")
+        menu = self.u.grab("Please select an option:  ")
+        if not len(menu):
+            self.efi_driver_menu()
+            return
+        if menu[0].lower() == "m":
+            return
+        elif menu[0].lower() == "q":
+            self.u.custom_quit()
+        elif menu[0].lower() == "a":
+            to_build = self.c.efi_drivers
+        try:
+            m = int(menu)
+            if m > 0 and m <= len(self.c.efi_drivers):
+                to_build.append(self.c.efi_drivers[m-1])
+        except:
+            pass
+        if len(to_build):
+            self.u.head("Building EFI Drivers")
+            print("")
+            count = 0
+            success = 0
+            for d in to_build:
+                count += 1
+                print("Building {} of {}\n".format(count, len(to_build)))
+                out = self.c.build_efi_driver(d, "sa")
+                print("")
+                if not out:
+                    continue
+                success += 1
+                # Copy to the Clover folder
+                t_folder = self.check_clover_folder()
+                for o in out:
+                    c_name = os.path.basename(o)
+                    o_path = os.path.join(t_folder, c_name)
+                    shutil.copy(o, o_path)
+            if success > 0:
+                print("Revealing output...")
+                print("")
+                self.r.run({"args":["open",self.check_clover_folder()]})
+            print("Done.")
+            print("")
+            self.u.grab("Press [enter] to return...")
+            return
+        self.efi_driver_menu()
+
     def main(self):
         while True:
             self.u.head("Clover Extractor")
@@ -599,6 +658,8 @@ class CloverExtractor:
             print("E. Select EFI")
             print("X. Extract Clover")
             print("")
+            print("F. Build EFI Drivers")
+            print("")
             print("Auto Download and Install to:")
             print("  B. Boot Drive's EFI")
             if clover:
@@ -614,10 +675,11 @@ class CloverExtractor:
             print("")
             print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
             print("")
+            print("W. Wipe Source Folder")
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
-            self.u.resize(80, 33)
+            self.u.resize(80, 36)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -635,6 +697,13 @@ class CloverExtractor:
                 self.clover = self.get_clover_package()
             elif menu.lower() == "e":
                 self.efi = self.get_efi()
+            elif menu.lower() == "f":
+                self.efi_driver_menu()
+            elif menu.lower() == "w":
+                self.u.head("Wiping Source Folder")
+                print("")
+                print("Removing {}...".format(self.c_source))
+                shutil.rmtree(self.c_source, ignore_errors=True)
             elif menu.lower() == "cc":
                 self.build_clover()
             elif menu.lower() == "bb":
