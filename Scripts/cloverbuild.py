@@ -208,8 +208,9 @@ class CloverBuild:
         print("Setting up UDK...")
         cwd = os.getcwd()
         os.chdir(self.udk_path)
-        # Let's make sure we set our toolchain directory
+        # Let's make sure we set our toolchain directory and main tool dir
         os.environ["TOOLCHAIN_DIR"] = os.path.join(self.source, "opt", "local")
+        os.environ["DIR_MAIN"] = self.source
         out = self.r.run({"args":["bash", "-c", "source edksetup.sh"], "stream":self.debug})
         if out[2] != 0:
             print("Failed to setup UDK!")
