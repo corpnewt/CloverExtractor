@@ -38,8 +38,8 @@ class CloverBuild:
                     "repo" : "https://github.com/acidanthera/AptioFixPkg",
                     "path" : "AptioFixPkg", # Joined with source
                     "out"  : "AptioFixPkg/UDK/Build/AptioFixPkg/RELEASE_XCODE5/X64",
-                    # "name" : ["AptioMemoryFix.efi", "AptioInputFix.efi"],
                     "name" : ".efi", # Should copy all the .efi drivers into the package
+                    "sa"   : ".zip", # Standalone is zipped in the output folder
                     "run"  : "macbuild.tool",
                     "env"  : {"FORCE_INSTALL":"1"},
                     "lang" : "bash"
@@ -47,11 +47,20 @@ class CloverBuild:
                 {
                     "repo" : "https://github.com/acidanthera/AppleSupportPkg",
                     "path" : "AppleSupportPkg", # Joined with source
-                    # "out"  : "ApfsSupportPkg/UDK/Build/ApfsSupportPkg/RELEASE_XCODE5/X64",
                     "out"  : "AppleSupportPkg/UDK/Build/AppleSupportPkg/RELEASE_XCODE5/X64",
-                    # "name" : ["ApfsDriverLoader.efi", "AppleLoadImage.efi"],
                     "name" : ".efi", # Should copy all the .efi drivers into the package
+                    "sa"   : ".zip", # Standalone is zipped in the output folder
                     "run"  : "macbuild.tool",
+                    "env"  : {"FORCE_INSTALL":"1"},
+                    "lang" : "bash"
+                },
+                {
+                    "repo" : "https://github.com/acidanthera/VirtualSMC",
+                    "path" : "VirtualSMC", # Joined with source
+                    "out"  : "VirtualSMC/VirtualSmcPkg/UDK/Build/VirtualSmcPkg/RELEASE_XCODE5/X64",
+                    "name" : ".efi", # Should copy all the .efi drivers into the package
+                    "sa"   : ".efi", # Standalone is an efi driver as well
+                    "run"  : "./VirtualSmcPkg/macbuild.tool",
                     "env"  : {"FORCE_INSTALL":"1"},
                     "lang" : "bash"
                 }
@@ -134,14 +143,13 @@ class CloverBuild:
             return None
         return rev
 
-    def build_efi_drivers(self):
-        output = []
+    def build_efi_driver(self, driver, ret = "out"):
         cwd = os.getcwd()
-        for driver in self.efi_drivers:
-            os.chdir(self.source)
-            if not all(key in driver for key in ["repo", "path", "out", "name", "run", "lang"]):
+        os.chdir(self.source)
+        try:
+            if not all(key in driver for key in ["repo", "path", "out", "name", "run", "lang", "sa"]):
                 print("Driver missing info - skipping...")
-                continue
+                raise Exception()
             print("Building {}...".format(driver["path"]))
             if not os.path.exists(os.path.join(self.source, driver["path"], ".git")):
                 # Clone it
@@ -149,7 +157,7 @@ class CloverBuild:
                 out = self.r.run({"args":["git", "clone", driver["repo"]], "stream":self.debug})
                 if out[2] != 0:
                     print("Error cloning!")
-                    continue
+                    raise Exception()
             # Setup the env if available
             if driver.get("env", None):
                 for e in driver["env"]:
@@ -165,33 +173,48 @@ class CloverBuild:
             out = self.r.run({"args":[driver["lang"], driver["run"]], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build {}!".format(driver["path"]))
+                raise Exception()
+        except:
+            os.chdir(cwd)
+            return None
+        # Verify our return value
+        ret = ret.lower()
+        if ret == "name" or ret == "sa":
+            # We need to find a list of files
+            if not type(driver[ret]) is list:
+                driver[ret] = [driver[ret]]
+            # Iterate and gather
+            out = []
+            print(" - Locating...")
+            for d in driver[ret]:
+                for f in os.listdir(os.path.join(self.source, driver["out"])):
+                    if d.startswith(".") and f.lower().endswith(d.lower()) or d.lower() == f.lower():
+                        print(" --> {}".format(f))
+                        out.append(os.path.join(self.source, driver["out"], f))
+            out = None if not len(out) else out
+        elif ret == "out":
+            out = os.path.join(self.source, driver["out"])
+        os.chdir(cwd)
+        return out
+
+    def build_efi_drivers(self):
+        output = []
+        cwd = os.getcwd()
+        for driver in self.efi_drivers:
+            out = self.build_efi_driver(driver, "name")
+            if not out:
                 continue
             print(" - Copying...")
             # Copy
-            if type(driver["name"]) is str:
-                driver["name"] = [driver["name"]]
-            for d in driver["name"]:
-                # First check if it's just an extension
-                if d.startswith("."):
-                    # It's an extension - iterate the folder
-                    for f in os.listdir(os.path.join(self.source, driver["out"])):
-                        if f.lower().endswith(d.lower()):
-                            # Got one!
-                            # Copy the drivers!
-                            try:
-                                shutil.copy(os.path.join(self.source, driver["out"], f), os.path.join(self.ce_path, "drivers64", f))
-                                shutil.copy(os.path.join(self.source, driver["out"], f), os.path.join(self.ce_path, "drivers64UEFI", f))
-                                print(" --> {}".format(f))
-                            except:
-                                print("Failed to copy {}!".format(f))
-                else:
-                    # Copy the drivers!
-                    try:
-                        shutil.copy(os.path.join(self.source, driver["out"], d), os.path.join(self.ce_path, "drivers64", d))
-                        shutil.copy(os.path.join(self.source, driver["out"], d), os.path.join(self.ce_path, "drivers64UEFI", d))
-                        print(" --> {}".format(d))
-                    except:
-                        print("Failed to copy {}!".format(d))
+            for d in out:
+                # Copy the drivers!
+                try:
+                    dname = os.path.basename(d)
+                    shutil.copy(d, os.path.join(self.ce_path, "drivers64", dname))
+                    shutil.copy(d, os.path.join(self.ce_path, "drivers64UEFI", dname))
+                    print(" --> {}".format(dname))
+                except:
+                    print("Failed to copy {}!".format(dname))
 
     def build_clover(self):
         # Preliminary updates
