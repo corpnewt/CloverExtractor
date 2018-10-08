@@ -208,6 +208,8 @@ class CloverBuild:
         print("Setting up UDK...")
         cwd = os.getcwd()
         os.chdir(self.udk_path)
+        # Let's make sure we set our toolchain directory
+        os.environ["TOOLCHAIN_DIR"] = os.path.join(self.source, "opt", "local")
         out = self.r.run({"args":["bash", "-c", "source edksetup.sh"], "stream":self.debug})
         if out[2] != 0:
             print("Failed to setup UDK!")
@@ -215,16 +217,19 @@ class CloverBuild:
         # Build gettext, mtoc, and nasm (if needed)
         os.chdir(self.c_path)
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "gettext")):
+            print(" - Building gettext...")
             out = self.r.run({"args":["bash", "buildgettext.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build gettext!")
                 return False
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "mtoc.NEW")):
+            print(" - Building mtoc...")
             out = self.r.run({"args":["bash", "buildmtoc.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build mtoc!")
                 return False
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "nasm")):
+            print(" - Building nasm...")
             out = self.r.run({"args":["bash", "buildnasm.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build nasm!")
@@ -258,6 +263,19 @@ class CloverBuild:
             print(" --> {}".format(e))
             shutil.copy(os.path.join(self.ce_path, "drivers64UEFI", e), os.path.join(self.ce_path, "drivers64", e))
         print("Building Clover install package...")
+        print(" - Patching makepkg to avoid opening resulting folder...")
+        try:
+            new_mpkg = ""
+            with open("{}/CloverPackage/makepkg".format(self.c_path),"r") as f:
+                for line in f:
+                    if not line.lower().startswith("open"):
+                        new_mpkg += line
+            with open("{}/CloverPackage/makepkg".format(self.c_path),"w") as f:
+                f.write(new_mpkg)
+            print(" --> Patching Complete :)")
+        except:
+            print(" --> Patching failed :(")
+        print(" - Running makepkg...")
         out = self.r.run({"args":["bash", "{}/CloverPackage/makepkg".format(self.c_path)], "stream":self.debug})
         if out[2] != 0:
             print("Failed to create Clover install package!")
