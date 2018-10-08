@@ -11,9 +11,8 @@ class CloverExtractor:
         self.dl = downloader.Downloader()
         self.re = reveal.Reveal()
         # Keep our source local
-        self.c  = cloverbuild.CloverBuild(
-            source=os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, "src")
-            )
+        self.c_source = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, "src")
+        self.c  = cloverbuild.CloverBuild(source=self.c_source)
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
         self.clover_repo = "https://svn.code.sf.net/p/cloverefiboot/code"
         self.u  = utils.Utils("CloverExtractor")
