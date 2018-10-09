@@ -320,8 +320,15 @@ class CloverExtractor:
                 # Nothing to do here
                 continue
             # Get the defaults
-            installed = sorted([x.lower() for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
-            to_copy   = sorted([x for x in efi_list if x.lower() in installed])
+            installed = sorted([x for x in os.listdir(d64) if x.lower().endswith(".efi") and not x.startswith(".")])
+            to_copy = []
+            for x in installed:
+                for y in efi_list:
+                    if x.lower() == y.lower() or x.lower().replace("-64","") == y.lower():
+                        # Add it
+                        to_copy.append({"find":x, "replace":y})
+                        break
+            # to_copy   = sorted([x for x in efi_list if installed_mapped.get(x.lower(), None)])
 
             if not len(installed):
                 # Nothing to replace
@@ -334,9 +341,11 @@ class CloverExtractor:
             print("\nFound {} of {} efi driver{} in {} - replacing...\n".format(len(to_copy), len(installed), "" if len(installed) == 1 else "s", d))
 
             for f in to_copy:
-                self.qprint(" Replacing {}...".format(f), quiet)
-                os.remove(os.path.join(d64, f))
-                shutil.copy(efi_list[f]["path"], os.path.join(d64, f))
+                self.qprint(" Replacing {}...".format(f["find"]), quiet)
+                os.remove(os.path.join(d64, f["find"]))
+                shutil.copy(efi_list[f["replace"]]["path"], os.path.join(d64, f["replace"]))
+                if f["find"].lower() != f["replace"].lower():
+                    print("  - Renamed to {}.".format(f["replace"]))
 
     def cleanup(self, temp, disk, mount_status, quiet):
         shutil.rmtree(temp)
