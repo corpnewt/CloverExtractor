@@ -714,7 +714,9 @@ class CloverExtractor:
                 print("Removing {}...".format(self.c_source))
                 shutil.rmtree(self.c_source, ignore_errors=True)
             elif menu.lower() == "cc":
-                self.build_clover()
+                out = self.build_clover()
+                if out:
+                    self.re.reveal(out)
             elif menu.lower() == "bb":
                 self.auto_build(self.d.get_efi("/"), archive)
             elif menu.lower() == "bc":
