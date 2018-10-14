@@ -324,7 +324,8 @@ class CloverExtractor:
             to_copy = []
             for x in installed:
                 for y in efi_list:
-                    if x.lower() == y.lower() or x.lower().replace("-64","") == y.lower():
+                    # Replace if the values match with or without the "-64" suffix - but only replace once
+                    if x.lower().replace("-64","") == y.lower().replace("-64","") and not any(z for z in to_copy if z["find"] == x):
                         # Add it
                         to_copy.append({"find":x, "replace":y})
                         break
@@ -343,9 +344,9 @@ class CloverExtractor:
             for f in to_copy:
                 self.qprint(" Replacing {}...".format(f["find"]), quiet)
                 os.remove(os.path.join(d64, f["find"]))
-                shutil.copy(efi_list[f["replace"]]["path"], os.path.join(d64, f["replace"]))
+                shutil.copy(efi_list[f["replace"]]["path"], os.path.join(d64, f["find"]))
                 if f["find"].lower() != f["replace"].lower():
-                    print("  - Renamed to {}.".format(f["replace"]))
+                    print("  - {} --> {}".format(f["replace"], f["find"]))
 
     def cleanup(self, temp, disk, mount_status, quiet):
         shutil.rmtree(temp)
