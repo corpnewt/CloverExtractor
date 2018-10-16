@@ -12,6 +12,9 @@ class CloverExtractor:
         self.re = reveal.Reveal()
         # Keep our source local
         self.c_source = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, "src")
+        # Make sure the src folder exists
+        if not os.path.exists(self.c_source):
+            os.mkdir(self.c_source)
         self.c  = cloverbuild.CloverBuild(source=self.c_source)
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
         self.clover_repo = "https://svn.code.sf.net/p/cloverefiboot/code"
@@ -713,7 +716,14 @@ class CloverExtractor:
                 self.u.head("Wiping Source Folder")
                 print("")
                 print("Removing {}...".format(self.c_source))
-                shutil.rmtree(self.c_source, ignore_errors=True)
+                try:
+                    shutil.rmtree(self.c_source, ignore_errors=True)
+                except:
+                    pass
+                if not os.path.exists(self.c_source):
+                    print("")
+                    print("Creating {}".format(self.c_source))
+                    os.mkdir(self.c_source)
             elif menu.lower() == "cc":
                 out = self.build_clover()
                 if out:
