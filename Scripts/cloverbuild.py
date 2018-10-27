@@ -1,4 +1,4 @@
-import sys, os, shutil, time
+import sys, os, shutil, time, json
 sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__))))
 import run, reveal
 
@@ -31,7 +31,11 @@ class CloverBuild:
         # Setup the Clover EFI path
         self.ce_path    = os.path.join(self.c_path, "CloverPackage/CloverV2/drivers-Off")
         # Setup the efi drivers
-        self.efi_drivers = kwargs.get("efi_drivers", [])
+        # Check if efi_drivers.json exists and load it if so
+        self.efi_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "efi_drivers.json")
+        self.efi_drivers = []
+        if os.path.exists(self.efi_path):
+            self.efi_drivers = json.load(open(self.efi_path))
         if not len(self.efi_drivers):
             self.efi_drivers = [
                 {
@@ -210,8 +214,17 @@ class CloverBuild:
                 # Copy the drivers!
                 try:
                     dname = os.path.basename(d)
-                    shutil.copy(d, os.path.join(self.ce_path, "drivers64", dname))
-                    shutil.copy(d, os.path.join(self.ce_path, "drivers64UEFI", dname))
+                    # Get destination
+                    dest_list = driver.get("inst",{}).get(dname.lower(),[])
+                    if not len(dest_list):
+                        dest_list = [
+                            "[[ce_path]]/drivers64",
+                            "[[ce_path]]/drivers64UEFI"
+                        ]
+                    # Replace placeholders
+                    dest_full = [x.replace("[[ce_path]]", self.ce_path).replace("[[c_path]]",self.c_path) for x in dest_list]
+                    for path in dest_full:
+                        shutil.copy(d, os.path.join(path, dname))
                     print(" --> {}".format(dname))
                 except:
                     print("Failed to copy {}!".format(dname))
