@@ -1,0 +1,56 @@
+[
+    {
+        "repo" : "https://github.com/acidanthera/AptioFixPkg",
+        "path" : "AptioFixPkg",
+        "out"  : "AptioFixPkg/UDK/Build/AptioFixPkg/RELEASE_XCODE5/X64",
+        "name" : ".efi",
+        "sa"   : ".zip",
+        "run"  : "macbuild.tool",
+        "env"  : {"FORCE_INSTALL":"1"},
+        "lang" : "bash",
+        "inst" : {
+            "aptioinputfix.efi" : [
+                "[[ce_path]]/drivers64/FileVault2",
+                "[[ce_path]]/drivers64UEFI/FileVault2"
+            ],
+            "cleannvram.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ],
+            "verifymsre2.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ]
+        }
+    },
+    {
+        "repo" : "https://github.com/acidanthera/AppleSupportPkg",
+        "path" : "AppleSupportPkg",
+        "out"  : "AppleSupportPkg/UDK/Build/AppleSupportPkg/RELEASE_XCODE5/X64",
+        "name" : ".efi",
+        "sa"   : ".zip",
+        "run"  : "macbuild.tool",
+        "env"  : {"FORCE_INSTALL":"1"},
+        "lang" : "bash",
+        "inst" : {
+            "appleuisupport.efi" : [
+                "[[ce_path]]/drivers64/FileVault2",
+                "[[ce_path]]/drivers64UEFI/FileVault2"
+            ]
+        }
+    },
+    {
+        "repo" : "https://github.com/acidanthera/VirtualSMC",
+        "path" : "VirtualSMC",
+        "out"  : "VirtualSMC/VirtualSmcPkg/UDK/Build/VirtualSmcPkg/RELEASE_XCODE5/X64",
+        "name" : ".efi",
+        "sa"   : ".efi",
+        "run"  : "./VirtualSmcPkg/macbuild.tool",
+        "env"  : {"FORCE_INSTALL":"1"},
+        "lang" : "bash",
+        "inst" : {
+            "virtualsmc.efi" : [
+                "[[ce_path]]/drivers64/FileVault2",
+                "[[ce_path]]/drivers64UEFI/FileVault2"
+            ]
+        }
+    }
+]
