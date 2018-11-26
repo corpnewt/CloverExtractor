@@ -23,7 +23,6 @@ class CloverExtractor:
         self.efi    = None
         # Get the tools we need
         self.settings_file = os.path.join("Scripts", "settings.json")
-        self.bdmesg = self.get_binary("bdmesg")
         self.full = False
         cwd = os.getcwd()
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -44,60 +43,22 @@ class CloverExtractor:
             os.chdir(cwd)
 
     def get_version_from_bdmesg(self):
-        if not self.bdmesg:
-            return None
         # Get bdmesg output - then parse for SelfDevicePath
-        bdmesg = self.r.run({"args":[self.bdmesg]})[0]
-        if not "Starting Clover revision: " in bdmesg:
+        bd = bdmesg.bdmesg()
+        if not "Starting Clover revision: " in bd:
             # Not found
             return None
         try:
             # Split to just the contents of that line
-            rev = bdmesg.split("Starting Clover revision: ")[1].split("on")[0]
+            rev = bd.split("Starting Clover revision: ")[1].split("on")[0]
             return rev
         except:
             pass
         return None
 
-    def get_uuid_from_bdmesg(self):
-        if not self.bdmesg:
-            return None
-        # Get bdmesg output - then parse for SelfDevicePath
-        bdmesg = self.r.run({"args":[self.bdmesg]})[0]
-        if not "SelfDevicePath=" in bdmesg:
-            # Not found
-            return None
-        try:
-            # Split to just the contents of that line
-            line = bdmesg.split("SelfDevicePath=")[1].split("\n")[0]
-            # Get the HD section
-            hd   = line.split("HD(")[1].split(")")[0]
-            # Get the UUID
-            uuid = hd.split(",")[2]
-            return uuid
-        except:
-            pass
-        return None
-
-    def get_binary(self, name):
-        # Check the system, and local Scripts dir for the passed binary
-        found = self.r.run({"args":["which", name]})[0].split("\n")[0].split("\r")[0]
-        if len(found):
-            # Found it on the system
-            return found
-        if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), name)):
-            # Found it locally
-            return os.path.join(os.path.dirname(os.path.realpath(__file__)), name)
-        # Check the scripts folder
-        if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, name)):
-            # Found it locally -> Scripts
-            return os.path.join(os.path.dirname(os.path.realpath(__file__)), self.script_folder, name)
-        # Not found
-        return None
-
     def get_efi(self):
         self.d.update()
-        clover = self.get_uuid_from_bdmesg()
+        clover = bdmesg.get_clover_uuid()
         i = 0
         disk_string = ""
         if not self.full:
@@ -647,7 +608,7 @@ class CloverExtractor:
             print(" ")
             j = self.get_dl_info()
             c = self.get_clover_info()
-            clover = self.get_uuid_from_bdmesg()
+            clover = bdmesg.get_clover_uuid()
             vers   = self.get_version_from_bdmesg()
             self.d.update()
             if c:
