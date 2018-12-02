@@ -717,11 +717,19 @@ class CloverExtractor:
     def quiet_copy(self, args):
         # Iterate through the args
         arg_pairs = zip(*[iter(args)]*2)
+        built = None
         for pair in arg_pairs:
             efi = self.d.get_efi(pair[1])
             if efi:
                 try:
-                    self.mount_and_copy(self.d.get_efi(pair[1]), pair[0], False, True)
+                    # Check for build
+                    pkg = pair[0]
+                    if pkg.lower() == "build":
+                        if not built:
+                            # We haven't built it yet (or it failed?)
+                            built = self.build_clover()
+                        pkg = built
+                    self.mount_and_copy(self.d.get_efi(pair[1]), pkg, False, True)
                 except Exception as e:
                     print(str(e))
 
@@ -731,6 +739,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         # We got command line args!
         # CloverExtractor.command /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
+        # If the path is "build" - we build clover
         c.quiet_copy(sys.argv[1:])
     else:
         c.main()
