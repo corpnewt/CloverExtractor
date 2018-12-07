@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Ignore our src and Clover folders
+Clover
+src
+
 # C extensions
 *.so
 
