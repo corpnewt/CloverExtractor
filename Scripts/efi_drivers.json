@@ -52,5 +52,26 @@
                 "[[ce_path]]/drivers64UEFI/FileVault2"
             ]
         }
+    },
+    {
+        "repo" : "https://github.com/Goldfish64/AudioPkg",
+        "path" : "AudioPkg",
+        "out"  : "AudioPkg/UDK/Build/AudioPkg/RELEASE_XCODE5/X64",
+        "name" : ".efi",
+        "sa"   : ".zip",
+        "run"  : "macbuild.tool",
+        "env"  : {"FORCE_INSTALL":"1"},
+        "lang" : "bash",
+        "inst" : {
+            "bootchimecfg.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ],
+            "hdacodecdump.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ],
+            "audiodemo.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ]
+        }
     }
 ]
