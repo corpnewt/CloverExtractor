@@ -31,8 +31,10 @@ class CloverExtractor:
         else:
             self.settings = {
                 # Default settings here
-                "select_efi_drivers" : True
+                "select_efi_drivers" : True,
+                "debug" : False
             }
+        self.c.debug = self.settings.get("debug",False)
         os.chdir(cwd)
 
     def flush_settings(self):
@@ -648,12 +650,13 @@ class CloverExtractor:
             print("CC. Compile Clover From Source")
             print("")
             print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
+            print("U. Toggle Debugging (currently {})".format("Enabled" if self.settings.get("debug",False) else "Disabled"))
             print("")
             print("W. Wipe Source Folder")
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
-            self.u.resize(80, 36)
+            self.u.resize(80, 37)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -663,6 +666,7 @@ class CloverExtractor:
             if not len(menu):
                 continue
 
+            self.u.resize(80, 24)
             if menu.lower() == "q":
                 self.u.custom_quit()
             elif menu.lower() == "d":
@@ -699,6 +703,10 @@ class CloverExtractor:
                 self.auto_update(j, self.d.get_efi(clover), archive)
             elif menu.lower() == "t":
                 self.settings["select_efi_drivers"] = not self.settings.get("select_efi_drivers", True)
+                self.flush_settings()
+            elif menu.lower() == "u":
+                self.settings["debug"] = not self.settings.get("debug",False)
+                self.c.debug = self.settings["debug"]
                 self.flush_settings()
             elif menu.lower() == "x":
                 if not self.clover or not os.path.exists(self.clover):
