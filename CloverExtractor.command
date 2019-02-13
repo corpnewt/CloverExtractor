@@ -488,12 +488,15 @@ class CloverExtractor:
         t_path   = os.path.join(t_folder, info["name"])
         if os.path.exists(t_path):
             # Already exists - just return it
+            if not quiet:
+                self.re.reveal(t_path)
             return t_path
         out = self.dl.stream_to_file(info["url"], t_path)
         if not out:
             print("Something went wrong!")
             print(" ")
-            self.u.grab("Press [enter] to return to main...")
+            if not quiet:
+                self.u.grab("Press [enter] to return to main...")
             return None
         self.u.head("Downloaded {}".format(info["name"]))
         print("")
@@ -726,6 +729,7 @@ class CloverExtractor:
         # Iterate through the args
         arg_pairs = zip(*[iter(args)]*2)
         built = None
+        latest = None
         for pair in arg_pairs:
             efi = self.d.get_efi(pair[1])
             if efi:
@@ -737,6 +741,11 @@ class CloverExtractor:
                             # We haven't built it yet (or it failed?)
                             built = self.build_clover()
                         pkg = built
+                    elif pkg.lower() == "download":
+                        if not latest:
+                            # We haven't gathered info on it yet
+                            latest = self.get_dl_info()
+                        pkg = self.download_clover(latest, True)
                     self.mount_and_copy(self.d.get_efi(pair[1]), pkg, False, True)
                 except Exception as e:
                     print(str(e))
@@ -748,6 +757,7 @@ if __name__ == '__main__':
         # We got command line args!
         # CloverExtractor.command /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
         # If the path is "build" - we build clover
+        # If the path is "download" - we attempt to download the latest Dids clover
         c.quiet_copy(sys.argv[1:])
     else:
         c.main()
