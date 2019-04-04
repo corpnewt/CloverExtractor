@@ -309,7 +309,7 @@ class CloverExtractor:
             print("\nFound {} of {} efi driver{} in {} - replacing...\n".format(len(to_copy), len(installed), "" if len(installed) == 1 else "s", d))
 
             for f in to_copy:
-                self.qprint(" Replacing {}...".format(f["find"]), quiet)
+                print(" Replacing {}...".format(f["find"]))
                 os.remove(os.path.join(d64, f["find"]))
                 shutil.copy(efi_list[f["replace"]]["path"], os.path.join(d64, f["find"]))
                 if f["find"].lower() != f["replace"].lower():
