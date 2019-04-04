@@ -21,6 +21,7 @@ class CloverExtractor:
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
+        self.clover_sources = ["udk2018","opt","tools"]
         # Get the tools we need
         self.settings_file = os.path.join("Scripts", "settings.json")
         self.full = False
@@ -607,6 +608,30 @@ class CloverExtractor:
             return
         self.efi_driver_menu()
 
+    def clean_sources(self, folders = []):
+        # Lowercase the folder list
+        folders = [x.lower() for x in folders]
+        self.u.resize(80, 24)
+        self.u.head("Wiping Source Folders")
+        print("")
+        cwd = os.getcwd()
+        os.chdir(self.c_source)
+        print("Iterating Sources:\n")
+        for x in sorted(os.listdir(self.c_source)):
+            print(" - {}".format(x))
+            if x.lower() in folders:
+                print(" --> Removing...")
+                try:
+                    if os.path.isdir(x):
+                        shutil.rmtree(x,ignore_errors=True)
+                    else:
+                        os.remove(x)
+                    print(" ----> Removed.")
+                except Exception as e:
+                    print(" ----> Error removing!")
+                    print(" ------> {}".format(str(e)))
+        os.chdir(cwd)
+
     def main(self):
         while True:
             self.u.head("Clover Extractor")
@@ -655,11 +680,14 @@ class CloverExtractor:
             print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
             print("U. Toggle Debugging (currently {})".format("Enabled" if self.settings.get("debug",False) else "Disabled"))
             print("")
-            print("W. Wipe Source Folder")
+            print("W.  Wipe All Source Folders")
+            print("WC. Wipe Only Clover Source Folders")
+            print("WE. Wipe Only EFI Driver Source Folders")
+            print("")
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
-            self.u.resize(80, 37)
+            self.u.resize(80, 40)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -681,17 +709,11 @@ class CloverExtractor:
             elif menu.lower() == "f":
                 self.efi_driver_menu()
             elif menu.lower() == "w":
-                self.u.head("Wiping Source Folder")
-                print("")
-                print("Removing {}...".format(self.c_source))
-                try:
-                    shutil.rmtree(self.c_source, ignore_errors=True)
-                except:
-                    pass
-                if not os.path.exists(self.c_source):
-                    print("")
-                    print("Creating {}".format(self.c_source))
-                    os.mkdir(self.c_source)
+                self.clean_sources(os.listdir(self.c_source))
+            elif menu.lower() == "we":
+                self.clean_sources([x for x in os.listdir(self.c_source) if x.lower() not in self.clover_sources])
+            elif menu.lower() == "wc":
+                self.clean_sources(self.clover_sources)
             elif menu.lower() == "cc":
                 out = self.build_clover()
                 if out:
@@ -755,9 +777,21 @@ if __name__ == '__main__':
     # Check for args
     if len(sys.argv) > 1:
         # We got command line args!
-        # CloverExtractor.command /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
+        # CloverExtractor.command (w|we|wc) /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
+        # If the first item is w, we, or wc, clear the appropriate sources
         # If the path is "build" - we build clover
         # If the path is "download" - we attempt to download the latest Dids clover
-        c.quiet_copy(sys.argv[1:])
+        if sys.argv[1].lower() in ["w","we","wc"] and len(sys.argv) > 2:
+            args = sys.argv[2:]
+            w = sys.argv[1].lower()
+            if w == "w":
+                c.clean_sources(os.listdir(c.c_source))
+            elif w == "we":
+                c.clean_sources([x for x in os.listdir(c.c_source) if x.lower() not in c.clover_sources])
+            elif w == "wc":
+                c.clean_sources(c.clover_sources)
+        else:
+            args = sys.argv[1:]
+        c.quiet_copy(args)
     else:
         c.main()
