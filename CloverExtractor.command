@@ -171,7 +171,8 @@ class CloverExtractor:
             print(" ")
         # Create a temp folder
         temp = tempfile.mkdtemp()
-        efi_drivers = self.extract_clover(package, temp)
+        results = self.extract_clover(package, temp)
+        efi_drivers,binaries = results
         clover = next((efi_drivers[x]["path"] for x in efi_drivers if os.path.basename(x.lower()) == "cloverx64.efi"), None)
         print(" ")
         if not clover:
@@ -196,6 +197,23 @@ class CloverExtractor:
                 self.copy_efi_drivers(efi_drivers, efi_mount, quiet)
             except Exception as e:
                 print(str(e))
+
+        # Check for local binaries
+        if len(binaries):
+            bin_path = os.path.join("/","usr","local","bin")
+            to_copy = []
+            for x in binaries:
+                if os.path.exists(os.path.join(bin_path,x)):
+                    to_copy.append(x)
+            if not len(to_copy):
+                print("\nFound 0 of {} binar{} in /usr/local/bin - skipping...\n".format(len(binaries), "y" if len(binaries) == 1 else "ies"))
+            else:
+                print("\nFound {} of {} binar{} in /usr/local/bin - replacing...\n".format(len(to_copy), len(binaries), "y" if len(binaries) == 1 else "ies"))
+                # Replace the binaries
+                for f in to_copy:
+                    print(" Replacing {}...".format(f))
+                    os.remove(os.path.join(bin_path,f))
+                    shutil.copy(binaries[f]["path"], os.path.join(bin_path,f))
 
         # Clean up
         self.cleanup(temp, disk, mounted, quiet)
@@ -368,9 +386,32 @@ class CloverExtractor:
         # Iterate all packages - and extract them all
         c = os.getcwd()
         e = os.path.join(c, "efi_drivers")
-        el = {}
+        b = os.path.join(c, "binaries")
+        el = {} # The EFI driver list
+        bn = {} # The binary list
         if not os.path.exists(e):
             os.mkdir(e)
+        if not os.path.exists(b):
+            os.mkdir(b)
+        # Extract the Utils.pkg separately if we need to update the local
+        # /usr/local/bin
+        if os.path.exists(os.path.join(temp,"pkg","Utils.pkg")):
+            os.chdir(os.path.join(temp, "pkg", "Utils.pkg"))
+            print("Extracting Utils.pkg...")
+            try:
+                out = self.r.run({"args":["tar", "xvf", "Payload"]})
+            except:
+                out = ("", "Failed to extract Utils.pkg", 1)
+            if out[2] != 0:
+                print(out[2])
+            else:
+                bin_path = os.path.join(temp,"pkg","Utils.pkg","usr","local","bin")
+                if os.path.exists(bin_path):
+                    # Gather the binaries
+                    for x in os.listdir(bin_path):
+                        os.rename(os.path.join(bin_path,x), os.path.join(b,x))
+                        bn[x] = { "path" : os.path.join(b,x), "show" : True, "selected" : True }
+        # Iterate the packages and extract the efi drivers
         for pkg in [x for x in sorted(os.listdir(os.path.join(temp, "pkg"))) if x.lower().endswith(".pkg")]:
             os.chdir(os.path.join(temp, "pkg", pkg))
             if not pkg.lower() == "efifolder.pkg" and not self.settings.get("select_efi_drivers", True):
@@ -396,7 +437,10 @@ class CloverExtractor:
 
         if not len(el):
             print("No efi drivers found!")
-        return el
+        if not len(bn):
+            print("No binaries found!")
+
+        return (el,bn)
 
     def get_clover_package(self):
         # Returns a clover package
