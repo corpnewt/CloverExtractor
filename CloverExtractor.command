@@ -21,7 +21,8 @@ class CloverExtractor:
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
-        self.clover_sources = ["udk2018","opt","tools"]
+        self.clover_sources = ["udk2018"]
+        self.tool_sources   = ["opt","tools"]
         # Get the tools we need
         self.settings_file = os.path.join("Scripts", "settings.json")
         self.full = False
@@ -727,11 +728,12 @@ class CloverExtractor:
             print("W.  Wipe All Source Folders")
             print("WC. Wipe Only Clover Source Folders")
             print("WE. Wipe Only EFI Driver Source Folders")
+            print("WT. Wipe Only Clover Tools Source Folders")
             print("")
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
-            self.u.resize(80, 40)
+            self.u.resize(80, 41)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
@@ -755,9 +757,11 @@ class CloverExtractor:
             elif menu.lower() == "w":
                 self.clean_sources(os.listdir(self.c_source))
             elif menu.lower() == "we":
-                self.clean_sources([x for x in os.listdir(self.c_source) if x.lower() not in self.clover_sources])
+                self.clean_sources([x for x in os.listdir(self.c_source) if x.lower() not in self.clover_sources and x.lower() not in self.tool_sources])
             elif menu.lower() == "wc":
                 self.clean_sources(self.clover_sources)
+            elif menu.lower() == "wt":
+                self.clean_sources(self.tool_sources)
             elif menu.lower() == "cc":
                 out = self.build_clover()
                 if out:
@@ -821,8 +825,8 @@ if __name__ == '__main__':
     # Check for args
     if len(sys.argv) > 1:
         # We got command line args!
-        # CloverExtractor.command (w|we|wc) /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
-        # If the first item is w, we, or wc, clear the appropriate sources
+        # CloverExtractor.command (w|we|wt|wc) /path/to/clover.pkg disk#s# /path/to/other/clover.pkg disk#s#
+        # If the first item is w, we, wt, or wc, clear the appropriate sources
         # If the path is "build" - we build clover
         # If the path is "download" - we attempt to download the latest Dids clover
         if sys.argv[1].lower() in ["w","we","wc"] and len(sys.argv) > 2:
@@ -831,9 +835,11 @@ if __name__ == '__main__':
             if w == "w":
                 c.clean_sources(os.listdir(c.c_source))
             elif w == "we":
-                c.clean_sources([x for x in os.listdir(c.c_source) if x.lower() not in c.clover_sources])
+                c.clean_sources([x for x in os.listdir(c.c_source) if x.lower() not in c.clover_sources and x.lower() not in c.tool_sources])
             elif w == "wc":
                 c.clean_sources(c.clover_sources)
+            elif w == "wt":
+                c.clean_sources(c.tool_sources)
         else:
             args = sys.argv[1:]
         c.quiet_copy(args)
