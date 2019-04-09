@@ -213,8 +213,16 @@ class CloverExtractor:
                 # Replace the binaries
                 for f in to_copy:
                     print(" Replacing {}...".format(f))
-                    os.remove(os.path.join(bin_path,f))
-                    shutil.copy(binaries[f]["path"], os.path.join(bin_path,f))
+                    # os.remove(os.path.join(bin_path,f))
+                    out = self.r.run({"args":["rm","-f",os.path.join(bin_path,f)],"sudo":True})
+                    if out[2] != 0:
+                        print(out[1])
+                        continue
+                    # shutil.copy(binaries[f]["path"], os.path.join(bin_path,f))
+                    out = self.r.run({"args":["cp",binaries[f]["path"],os.path.join(bin_path,f)],"sudo":True})
+                    if out[2] != 0:
+                        print(out[1])
+                        continue
 
         # Clean up
         self.cleanup(temp, disk, mounted, quiet)
