@@ -404,7 +404,7 @@ class CloverExtractor:
             except:
                 out = ("", "Failed to extract Utils.pkg", 1)
             if out[2] != 0:
-                print(out[2])
+                print(out[1])
             else:
                 bin_path = os.path.join(temp,"pkg","Utils.pkg","usr","local","bin")
                 if os.path.exists(bin_path):
@@ -424,7 +424,7 @@ class CloverExtractor:
             except:
                 out = ("", "Failed to extract {}".format(pkg), 1)
             if out[2] != 0:
-                print(out[2])
+                print(out[1])
                 continue
             # Check for Clover
             if os.path.exists(os.path.join(temp, "pkg", pkg, "EFI", "CLOVER", "CLOVERX64.efi")):
