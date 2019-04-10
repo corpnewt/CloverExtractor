@@ -386,7 +386,7 @@ class CloverExtractor:
         cwd = os.getcwd()
         os.chdir(os.path.dirname(os.path.realpath(temp)))
 
-        out = self.r.run({"args":["pkgutil", "--expand", package, os.path.join(temp, "pkg")]})        
+        out = self.r.run({"args":["/usr/sbin/pkgutil", "--expand", package, os.path.join(temp, "pkg")]})        
         if out[2] != 0:
             os.chdir(cwd)
             print("pkgutil", out[1])
@@ -408,7 +408,7 @@ class CloverExtractor:
             os.chdir(os.path.join(temp, "pkg", "Utils.pkg"))
             print("Extracting Utils.pkg...")
             try:
-                out = self.r.run({"args":["tar", "xvf", "Payload"]})
+                out = self.r.run({"args":["/usr/bin/tar", "xvf", "Payload"]})
             except:
                 out = ("", "Failed to extract Utils.pkg", 1)
             if out[2] != 0:
@@ -428,7 +428,7 @@ class CloverExtractor:
                 continue
             print("Extracting {}...".format(pkg))
             try:
-                out = self.r.run({"args":["tar", "xvf", "Payload"]})
+                out = self.r.run({"args":["/usr/bin/tar", "xvf", "Payload"]})
             except:
                 out = ("", "Failed to extract {}".format(pkg), 1)
             if out[2] != 0:
