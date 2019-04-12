@@ -34,19 +34,11 @@
             "appleuisupport.efi" : [
                 "[[ce_path]]/drivers64/FileVault2",
                 "[[ce_path]]/drivers64UEFI/FileVault2"
-            ]
-        }
-    },
-    {
-        "repo" : "https://github.com/acidanthera/VirtualSMC",
-        "path" : "VirtualSMC",
-        "out"  : "VirtualSMC/VirtualSmcPkg/UDK/Build/VirtualSmcPkg/RELEASE_XCODE5/X64",
-        "name" : ".efi",
-        "sa"   : ".efi",
-        "run"  : "./VirtualSmcPkg/macbuild.tool",
-        "env"  : {"FORCE_INSTALL":"1"},
-        "lang" : "bash",
-        "inst" : {
+            ],
+            "usbkbdxe.efi" : [
+                "[[ce_path]]/drivers64/FileVault2",
+                "[[ce_path]]/drivers64UEFI/FileVault2"
+            ],
             "virtualsmc.efi" : [
                 "[[ce_path]]/drivers64/FileVault2",
                 "[[ce_path]]/drivers64UEFI/FileVault2"
