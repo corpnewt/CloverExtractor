@@ -207,9 +207,9 @@ class CloverExtractor:
                 if os.path.exists(os.path.join(bin_path,x)):
                     to_copy.append(x)
             if not len(to_copy):
-                print("\nFound 0 of {} binar{} in /usr/local/bin - skipping...\n".format(len(binaries), "y" if len(binaries) == 1 else "ies"))
+                print("\nNo clover-related binaries found in /usr/local/bin - nothing to update.")
             else:
-                print("\nFound {} of {} binar{} in /usr/local/bin - replacing...\n".format(len(to_copy), len(binaries), "y" if len(binaries) == 1 else "ies"))
+                print("\nFound {} clover-related binar{} in /usr/local/bin - replacing...\n".format(len(to_copy), "y" if len(to_copy) == 1 else "ies"))
                 # Replace the binaries
                 for f in to_copy:
                     print(" Replacing {}...".format(f))
