@@ -308,7 +308,7 @@ class CloverExtractor:
         return out
 
     def copy_efi_drivers(self, efi_list, efi_path, quiet):
-        for d in ["drivers64", "drivers32", "drivers64UEFI", "drivers32UEFI"]:
+        for d in ["drivers64", "drivers32", "drivers64UEFI", "drivers32UEFI", "drivers/UEFI", "drivers/BIOS"]:
             d64 = os.path.join(efi_path, "EFI", "CLOVER", d)
             if not os.path.exists(d64):
                 # Nothing to do here
@@ -689,18 +689,23 @@ class CloverExtractor:
         while True:
             self.u.head("Clover Extractor")
             print(" ")
+            height = 35
             j = self.get_dl_info()
             c = self.get_clover_info()
             clover = bdmesg.get_clover_uuid()
             vers   = self.get_version_from_bdmesg()
             self.d.update()
             if c:
+                height += 1
                 print("Latest Clover:     {}".format(c))
             if vers:
+                height += 1
                 print("Currently Booted:  {}".format(vers))
             if j:
+                height += 1
                 print("Latest From Dids:  {}".format(j["name"]))
             if vers or j or c:
+                height += 1
                 print(" ")
             if self.clover == None or not os.path.exists(self.clover):
                 print("Package: None")
@@ -720,11 +725,13 @@ class CloverExtractor:
             print("Auto Download and Install to:")
             print("  B. Boot Drive's EFI")
             if clover:
+                height += 1
                 print("  C. Booted Clover's EFI")
             print(" ")
             print("Build From Source and Install to:")
             print("  BB. Boot Drive's EFI")
             if clover:
+                height += 1
                 print("  BC. Booted Clover's EFI")
             print("")
             print("D. Download Newest Clover (Dids' Repo)")
@@ -741,7 +748,7 @@ class CloverExtractor:
             print("Q. Quit")
             print("")
             print("Add A to X, B, C, BB, or BC (eg. ABC) to also archive")
-            self.u.resize(80, 41)
+            self.u.resize(80, height)
             menu = self.u.grab("Please select an option:  ")
             archive = False
             if len(menu) == 2 and "a" in menu.lower():
