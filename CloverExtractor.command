@@ -193,6 +193,9 @@ class CloverExtractor:
             print(str(e))
             c_out = False    
         if self.settings.get("select_efi_drivers", True):
+            # Check our clover version and ensure the EFI is setup correctly
+            t_clover_v = self.get_clover_version(clover)
+            self.ensure_for_version(efi_mount, t_clover_v)
             # Copy EFI Drivers
             try:
                 self.copy_efi_drivers(efi_drivers, efi_mount, quiet)
@@ -306,6 +309,79 @@ class CloverExtractor:
             print(str(e))
             out = False
         return out
+
+    def ensure_for_version(self, efi_path, clover_version):
+        # 4983 added BiosDrivers and UEFIDrivers at the CLOVER dir
+        try:
+            clover_version = int(clover_version)
+        except:
+            return # We don't know what Clover this is - just... deal with it...
+        if clover_version < 4983:
+            # We need to ensure that we migrate drivers/UEFI or UEFIDrivers to drivers64UEFI
+            # and drivers/BIOS or BiosDrivers to drivers64
+            targetUEFI = os.path.join(efi_path, "EFI", "CLOVER", "drivers64UEFI")
+            targetBIOS = os.path.join(efi_path, "EFI", "CLOVER", "drivers64")
+            sourceUEFI = [
+                os.path.join(efi_path,"EFI","CLOVER","drivers","UEFI"),
+                os.path.join(efi_path,"EFI","CLOVER","UEFIDrivers")
+            ]
+            sourceBIOS = [
+                os.path.join(efi_path,"EFI","CLOVER","drivers","BIOS"),
+                os.path.join(efi_path,"EFI","CLOVER","BiosDrivers")
+            ]
+        elif clover_version >= 4983 and clover_version < 4986:
+            targetUEFI = os.path.join(efi_path, "EFI", "CLOVER", "UEFIDrivers")
+            targetBIOS = os.path.join(efi_path, "EFI", "CLOVER", "BiosDrivers")
+            sourceUEFI = [
+                os.path.join(efi_path,"EFI","CLOVER","drivers","UEFI"),
+                os.path.join(efi_path,"EFI","CLOVER","drivers64UEFI")
+            ]
+            sourceBIOS = [
+                os.path.join(efi_path,"EFI","CLOVER","drivers","BIOS"),
+                os.path.join(efi_path,"EFI","CLOVER","drivers64")
+            ]
+        else:
+            # Assume we only use the drivers/UEFI and drivers/BIOS folders
+            targetUEFI = os.path.join(efi_path, "EFI", "CLOVER", "drivers", "UEFI")
+            targetBIOS = os.path.join(efi_path, "EFI", "CLOVER", "drivers", "BIOS")
+            sourceUEFI = [
+                os.path.join(efi_path,"EFI","CLOVER","UEFIDrivers"),
+                os.path.join(efi_path,"EFI","CLOVER","drivers64UEFI")
+            ]
+            sourceBIOS = [
+                os.path.join(efi_path,"EFI","CLOVER","BiosDrivers"),
+                os.path.join(efi_path,"EFI","CLOVER","drivers64")
+            ]
+        # Verify that our targets exist
+        if not os.path.exists(targetUEFI):
+            # Iterate our sources and clone if they exist
+            for x in sourceUEFI:
+                if os.path.exists(x):
+                    # Create the target - and copy the contents
+                    os.makedirs(targetUEFI)
+                    for y in os.listdir(x):
+                        path = os.path.join(x,y)
+                        try:
+                            shutil.copy(path,targetUEFI)
+                        except Exception as e:
+                            print("Failed to copy {}: {}".format(y,e))
+                    # Assume we copied what was needed - bail
+                    break
+        if not os.path.exists(targetBIOS):
+            # Iterate our sources and clone if they exist
+            for x in sourceBIOS:
+                if os.path.exists(x):
+                    # Create the target - and copy the contents
+                    os.makedirs(targetBIOS)
+                    for y in os.listdir(x):
+                        path = os.path.join(x,y)
+                        try:
+                            shutil.copy(path,targetBIOS)
+                        except Exception as e:
+                            print("Failed to copy {}: {}".format(y,e))
+                    # Assume we copied what was needed - bail
+                    break
+        
 
     def copy_efi_drivers(self, efi_list, efi_path, quiet):
         for d in ["drivers64", "drivers32", "drivers64UEFI", "drivers32UEFI", "drivers/UEFI", "drivers/BIOS"]:
