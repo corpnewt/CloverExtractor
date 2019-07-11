@@ -10,8 +10,12 @@
         "lang" : "bash",
         "inst" : {
             "aptioinputfix.efi" : [
-                "[[ce_path]]/drivers64/FileVault2",
-                "[[ce_path]]/drivers64UEFI/FileVault2"
+                "[[ce_path]]/UEFI/FileVault2",
+                "[[ce_path]]/BIOS/FileVault2"
+            ],
+            "aptiomemoryfix.efi" : [
+                "[[ce_path]]/UEFI/MemoryFix",
+                "[[ce_path]]/BIOS"
             ],
             "cleannvram.efi" :[
                 "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
@@ -31,17 +35,25 @@
         "env"  : {"FORCE_INSTALL":"1"},
         "lang" : "bash",
         "inst" : {
+            "apfsdriverloader.efi" : [
+                "[[ce_path]]/UEFI/FileSystem",
+                "[[ce_path]]/BIOS/FileSystem"
+            ],
             "appleuisupport.efi" : [
-                "[[ce_path]]/drivers64/FileVault2",
-                "[[ce_path]]/drivers64UEFI/FileVault2"
+                "[[ce_path]]/UEFI/FileVault2",
+                "[[ce_path]]/BIOS/FileVault2"
             ],
             "usbkbdxe.efi" : [
-                "[[ce_path]]/drivers64/FileVault2",
-                "[[ce_path]]/drivers64UEFI/FileVault2"
+                "[[ce_path]]/UEFI/HID",
+                "[[ce_path]]/BIOS/FileVault2"
+            ],
+            "vboxhfs.efi" : [
+                "[[ce_path]]/UEFI/FileSystem",
+                "[[ce_path]]/BIOS/FileSystem"
             ],
             "virtualsmc.efi" : [
-                "[[ce_path]]/drivers64/FileVault2",
-                "[[ce_path]]/drivers64UEFI/FileVault2"
+                "[[ce_path]]/UEFI/FileVault2",
+                "[[ce_path]]/BIOS/FileVault2"
             ]
         }
     },
@@ -55,6 +67,10 @@
         "env"  : {"FORCE_INSTALL":"1"},
         "lang" : "bash",
         "inst" : {
+            "audiodxe.efi" :[
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/drivers/UEFI",
+                "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/drivers/BIOS"
+            ],
             "bootchimecfg.efi" :[
                 "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
             ],
