@@ -29,7 +29,7 @@ class CloverBuild:
         # Setup the out dir
         self.out        = os.path.join(self.c_path, "CloverPackage", "sym")
         # Setup the Clover EFI path
-        self.ce_path    = os.path.join(self.c_path, "CloverPackage/CloverV2/drivers-Off")
+        self.ce_path    = os.path.join(self.c_path, "CloverPackage/CloverV2/EFI/CLOVER/drivers/off")
         # Setup the efi drivers
         # Check if efi_drivers.json exists and load it if so
         self.efi_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "efi_drivers.json")
@@ -218,13 +218,17 @@ class CloverBuild:
                     dest_list = driver.get("inst",{}).get(dname.lower(),[])
                     if not len(dest_list):
                         dest_list = [
-                            "[[ce_path]]/drivers64",
-                            "[[ce_path]]/drivers64UEFI"
+                            "[[ce_path]]/BIOS",
+                            "[[ce_path]]/UEFI"
                         ]
                     # Replace placeholders
                     dest_full = [x.replace("[[ce_path]]", self.ce_path).replace("[[c_path]]",self.c_path) for x in dest_list]
                     for path in dest_full:
-                        shutil.copy(d, os.path.join(path, dname))
+                        # Remove if it already exists
+                        dpath = os.path.join(path,dname)
+                        if os.path.exists(dpath):
+                            os.remove(dpath)
+                        shutil.copy(d, dpath)
                     print(" --> {}".format(dname))
                 except:
                     print("Failed to copy {}!".format(dname))
@@ -293,12 +297,12 @@ class CloverBuild:
         print("Downloading other EFI drivers...")
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus_x64.efi"]:
             print(" --> {}".format(e.replace("_x64", "")))
-            self.r.run({"args":"curl -sSLk https://github.com/Micky1979/Build_Clover/raw/work/Files/{} > \"{}\"/drivers64UEFI/{}".format(e, self.ce_path, e.replace("_x64", "")), "shell":True})
+            self.r.run({"args":"curl -sSLk https://github.com/Micky1979/Build_Clover/raw/work/Files/{} > \"{}\"/UEFI/FileSystem/{}".format(e, self.ce_path, e.replace("_x64", "")), "shell":True})
         # Copy over the other EFI drivers
         print("Copying other EFI drivers...")
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus.efi"]:
             print(" --> {}".format(e))
-            shutil.copy(os.path.join(self.ce_path, "drivers64UEFI", e), os.path.join(self.ce_path, "drivers64", e))
+            shutil.copy(os.path.join(self.ce_path, "UEFI", "FileSystem", e), os.path.join(self.ce_path, "BIOS", "FileSystem", e))
         print("Building Clover install package...")
         print(" - Patching makepkg to avoid opening resulting folder...")
         try:
