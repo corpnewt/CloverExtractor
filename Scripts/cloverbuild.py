@@ -15,6 +15,7 @@ class CloverBuild:
         # Setup the default path - and expand it
         self.source     = kwargs.get("source", "~/src")
         self.source     = os.path.abspath(os.path.expanduser(self.source))
+        self.verbose    = kwargs.get("verbose",False)
         if not os.path.exists(self.source):
             os.mkdir(self.source)
         # Setup the UDK repo
@@ -83,6 +84,8 @@ class CloverBuild:
             out = self.r.run({"args":["git", "clone", self.udk_repo, "-b", self.udk_branch, "--depth", "1", self.udk_path], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to check out UDK2018!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 return False
         # Already cloned once - just update
         print("Updating UDK2018...")
@@ -98,6 +101,8 @@ class CloverBuild:
             out = out[-1]
         if out[2] != 0:
             print("Failed to update UDK2018!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         return True
 
@@ -109,6 +114,8 @@ class CloverBuild:
             out = self.r.run({"args":["svn", "co", self.c_repo, self.c_path], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to check out Clover!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 return False
         # Already cloned once - just update
         print("Updating Clover...")
@@ -129,6 +136,8 @@ class CloverBuild:
             out = out[-1]
         if out[2] != 0:
             print("Failed to update Clover!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         return True
 
@@ -161,6 +170,8 @@ class CloverBuild:
                 out = self.r.run({"args":["git", "clone", driver["repo"]], "stream":self.debug})
                 if out[2] != 0:
                     print("Error cloning!")
+                    if self.verbose:
+                        print(" - {}".format(out[1]))
                     raise Exception()
             # Setup the env if available
             if driver.get("env", None):
@@ -177,6 +188,8 @@ class CloverBuild:
             out = self.r.run({"args":[driver["lang"], driver["run"]], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build {}!".format(driver["path"]))
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 raise Exception()
         except:
             os.chdir(cwd)
@@ -243,6 +256,8 @@ class CloverBuild:
         out = self.r.run({"args":["make", "-C", os.path.join(self.udk_path, "BaseTools", "Source", "C")], "stream":self.debug})
         if out[2] != 0:
             print("Failed to compile base tools!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         # Setup UDK
         print("Setting up UDK...")
@@ -254,6 +269,8 @@ class CloverBuild:
         out = self.r.run({"args":["bash", "-c", "source edksetup.sh"], "stream":self.debug})
         if out[2] != 0:
             print("Failed to setup UDK!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         # Build gettext, mtoc, and nasm (if needed)
         os.chdir(self.c_path)
@@ -262,18 +279,24 @@ class CloverBuild:
             out = self.r.run({"args":["bash", "buildgettext.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build gettext!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 return False
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "mtoc.NEW")):
             print(" - Building mtoc...")
             out = self.r.run({"args":["bash", "buildmtoc.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build mtoc!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 return False
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "nasm")):
             print(" - Building nasm...")
             out = self.r.run({"args":["bash", "buildnasm.sh"], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to build nasm!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
                 return False
         # Install UDK patches
         print("Installing UDK patches...")
@@ -281,6 +304,20 @@ class CloverBuild:
         if out[2] != 0:
             print("Failed to install UDK patches!")
             return False
+        # ApfsDriverLoader is built, and replaced - let's avoid building it here
+        print("Patching Clover.dsc to remove ApfsDriverLoader (we build it manually)...")
+        apfs_path = "Clover/FileSystems/ApfsDriverLoader/ApfsDriverLoader.inf"
+        # Let's patch out their inclusion in Clover.dsc
+        with open(os.path.join(self.c_path,"Clover.dsc"),"r") as f:
+            clover_dsc = f.read()
+        lines = "\n".join([x for x in clover_dsc.split("\n") if not x.strip().lower().startswith(apfs_path.lower())])
+        if len(lines) == len(clover_dsc):
+            print(" - Did not find ApfsDriverLoader - no changes made")
+        else:
+            # Line count changed - we edited something
+            print(" - Found and omitted ApfsDriverLoader in Clover.dsc")
+            with open(os.path.join(self.c_path,"Clover.dsc"),"w") as f:
+                f.write(lines)
         print("Cleaning Clover...")
         out = self.r.run([
             {"args":["bash", "ebuild.sh", "-cleanall"], "stream":self.debug},
@@ -290,6 +327,8 @@ class CloverBuild:
             out = out[-1]
         if out[2] != 0:
             print("Failed to clean Clover!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         # Build the EFI drivers
         self.build_efi_drivers()
@@ -320,6 +359,8 @@ class CloverBuild:
         out = self.r.run({"args":["bash", "{}/CloverPackage/makepkg".format(self.c_path)], "stream":self.debug})
         if out[2] != 0:
             print("Failed to create Clover install package!")
+            if self.verbose:
+                print(" - {}".format(out[1]))
             return False
         try:
             pack = out[0].split("Package name: [39;49;00m")[1].split("\n")[0].replace("\n", "").replace("\r", "")
