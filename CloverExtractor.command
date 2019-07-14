@@ -121,17 +121,17 @@ get_local_python_version() {
     # $1 = Python bin name (defaults to python3)
     # Echoes the path to the highest version of the passed python bin if any
     local py_name="$1" max_version= python= python_version= python_path=
-    if [ -z $py_name ]; then
+    if [ "$py_name" == "" ]; then
         py_name="python3"
     fi
     for python in "$(whereis "$py_name")"; do
         python_version="$($python -V 2>&1 | cut -d' ' -f2 | grep -E "[\d.]+")"
-        if [ -z $python_version ]; then
+        if [ "$python_version" == "" ]; then
             # Didn't find a py version - skip
             continue
         fi
         # Got the py version - compare to our max
-        if [ -z $max_version ] || [ "$(echo "$python_version > $max_version" |bc)" == "1" ]; then
+        if [ "$max_version" == "" ] || [ "$(echo "$python_version > $max_version" |bc)" == "1" ]; then
             # Max not set, or less than the current - update it
             max_version="$python_version"
             python_path="$python"
@@ -180,7 +180,7 @@ main() {
         # Doesn't exist
         print_target_missing
     fi
-    if [ -z $use_py3 ]; then
+    if [ "$use_py3" == "" ]; then
         use_py3="TRUE"
     fi
     if [ "$use_py3" != "FALSE" ]; then
