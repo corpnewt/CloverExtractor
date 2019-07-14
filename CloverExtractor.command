@@ -218,4 +218,5 @@ main() {
 }
 
 downloaded="FALSE"
+trap cleanup EXIT
 main
