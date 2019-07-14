@@ -125,7 +125,7 @@ get_local_python_version() {
     if [ "$py_name" == "" ]; then
         py_name="python3"
     fi
-    py_list="$(which "$py_name" 2>/dev/null)"
+    py_list="$(which -a "$py_name" 2>/dev/null)"
     # Build a newline separated list from the whereis output too
     for python in "$(whereis "$py_name" 2>/dev/null)"; do
         if [ "$py_list" == "" ]; then
