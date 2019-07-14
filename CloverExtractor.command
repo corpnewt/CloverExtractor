@@ -5,6 +5,7 @@
 dir="${0%/*}"
 script="${0##*/}"
 target="${script%.*}.py"
+NL=$'\n'
 
 # use_py3:
 #   TRUE  = Use if found, use py2 otherwise
@@ -124,19 +125,33 @@ get_local_python_version() {
     if [ "$py_name" == "" ]; then
         py_name="python3"
     fi
-    for python in "$(whereis "$py_name")"; do
+    py_list="$(which "$py_name" 2>/dev/null)"
+    # Build a newline separated list from the whereis output too
+    for python in "$(whereis "$py_name" 2>/dev/null)"; do
+        if [ "$py_list" == "" ]; then
+            py_list="$python"
+        else
+            py_list="$py_list${NL}$python"
+        fi
+    done
+    # Walk that newline separated list
+    while read python; do
+        if [ "$python" == "" ]; then
+            # Got a blank line - skip
+            continue
+        fi
         python_version="$($python -V 2>&1 | cut -d' ' -f2 | grep -E "[\d.]+")"
         if [ "$python_version" == "" ]; then
             # Didn't find a py version - skip
             continue
         fi
         # Got the py version - compare to our max
-        if [ "$max_version" == "" ] || [ "$(echo "$python_version > $max_version" |bc)" == "1" ]; then
+        if [ "$max_version" == "" ] || [ "$(echo $python_version > $max_version |bc)" == "1" ]; then
             # Max not set, or less than the current - update it
             max_version="$python_version"
             python_path="$python"
         fi
-    done
+    done <<< "$py_list"
     echo "$python_path"
 }
 
@@ -175,7 +190,7 @@ main() {
     clear
     python=
     version=
-    # CD into the current directory - then verify our target exists
+    # Verify our target exists
     if [ ! -f "$dir/$target" ]; then
         # Doesn't exist
         print_target_missing
