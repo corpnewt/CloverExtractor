@@ -2,6 +2,7 @@
 
 # Get the curent directory, the script name
 # and the script name with "py" substituted for the extension.
+args="$@"
 dir="${0%/*}"
 script="${0##*/}"
 target="${script%.*}.py"
@@ -213,8 +214,8 @@ main() {
         prompt_and_download
         return 1
     fi
-    # Found it - start our script
-    "$python" "$dir/$target"
+    # Found it - start our script and pass all args
+    "$python" "$dir/$target" $args
 }
 
 downloaded="FALSE"
