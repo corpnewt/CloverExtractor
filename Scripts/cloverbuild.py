@@ -246,11 +246,12 @@ class CloverBuild:
                 except:
                     print("Failed to copy {}!".format(dname))
 
-    def build_clover(self):
+    def build_clover(self, pkg=True, iso=False):
         # Preliminary updates
+        return_dict = {}
         if not self.update_udk() or not self.update_clover():
             # Updates failed :(
-            return False
+            return return_dict
         # Compile base tools
         print("Compiling base tools...")
         out = self.r.run({"args":["make", "-C", os.path.join(self.udk_path, "BaseTools", "Source", "C")], "stream":self.debug})
@@ -258,7 +259,7 @@ class CloverBuild:
             print("Failed to compile base tools!")
             if self.verbose:
                 print(" - {}".format(out[1]))
-            return False
+            return return_dict
         # Setup UDK
         print("Setting up UDK...")
         cwd = os.getcwd()
@@ -271,7 +272,7 @@ class CloverBuild:
             print("Failed to setup UDK!")
             if self.verbose:
                 print(" - {}".format(out[1]))
-            return False
+            return return_dict
         # Build gettext, mtoc, and nasm (if needed)
         os.chdir(self.c_path)
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "gettext")):
@@ -281,7 +282,7 @@ class CloverBuild:
                 print("Failed to build gettext!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
-                return False
+                return return_dict
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "mtoc.NEW")):
             print(" - Building mtoc...")
             out = self.r.run({"args":["bash", "buildmtoc.sh"], "stream":self.debug})
@@ -289,7 +290,7 @@ class CloverBuild:
                 print("Failed to build mtoc!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
-                return False
+                return return_dict
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "nasm")):
             print(" - Building nasm...")
             out = self.r.run({"args":["bash", "buildnasm.sh"], "stream":self.debug})
@@ -297,13 +298,13 @@ class CloverBuild:
                 print("Failed to build nasm!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
-                return False
+                return return_dict
         # Install UDK patches
         print("Installing UDK patches...")
         out = self.r.run({"args":"cp -R \"{}\"/Patches_for_UDK2018/* ../".format(self.c_path), "stream":self.debug, "shell":True})
         if out[2] != 0:
             print("Failed to install UDK patches!")
-            return False
+            return return_dict
         # ApfsDriverLoader is built, and replaced - let's avoid building it here
         print("Patching Clover.dsc to remove ApfsDriverLoader (we build it manually)...")
         apfs_path = "Clover/FileSystems/ApfsDriverLoader/ApfsDriverLoader.inf"
@@ -329,9 +330,9 @@ class CloverBuild:
             print("Failed to clean Clover!")
             if self.verbose:
                 print(" - {}".format(out[1]))
-            return False
+            return return_dict
         # Build the EFI drivers
-        self.build_efi_drivers()
+        # self.build_efi_drivers()
         # Download EFI drivers
         print("Downloading other EFI drivers...")
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus_x64.efi"]:
@@ -342,32 +343,67 @@ class CloverBuild:
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus.efi"]:
             print(" --> {}".format(e))
             shutil.copy(os.path.join(self.ce_path, "UEFI", "FileSystem", e), os.path.join(self.ce_path, "BIOS", "FileSystem", e))
-        print("Building Clover install package...")
-        print(" - Patching makepkg to avoid opening resulting folder...")
-        try:
-            new_mpkg = ""
-            with open("{}/CloverPackage/makepkg".format(self.c_path),"r") as f:
-                for line in f:
-                    if not line.lower().startswith("open"):
-                        new_mpkg += line
-            with open("{}/CloverPackage/makepkg".format(self.c_path),"w") as f:
-                f.write(new_mpkg)
-            print(" --> Patching Complete :)")
-        except:
-            print(" --> Patching failed :(")
-        print(" - Running makepkg...")
-        out = self.r.run({"args":["bash", "{}/CloverPackage/makepkg".format(self.c_path)], "stream":self.debug})
-        if out[2] != 0:
-            print("Failed to create Clover install package!")
-            if self.verbose:
-                print(" - {}".format(out[1]))
-            return False
-        try:
-            pack = out[0].split("Package name: [39;49;00m")[1].split("\n")[0].replace("\n", "").replace("\r", "")
-        except:
-            pack = None
         os.chdir(self.out)
-        if pack != None and os.path.exists(pack):
-            print("\nBuilt {}!\n".format(pack))
-            return os.path.join(self.out, pack)
-        return False
+        if pkg:
+            print("Building Clover install package...")
+            print(" - Patching makepkg to avoid opening resulting folder...")
+            try:
+                new_mpkg = ""
+                with open("../makepkg","r") as f:
+                    for line in f:
+                        if not line.lower().startswith("open"):
+                            new_mpkg += line
+                with open("../makepkg","w") as f:
+                    f.write(new_mpkg)
+                print(" --> Patching Complete :)")
+            except:
+                print(" --> Patching failed :(")
+            print(" - Running makepkg...")
+            out = self.r.run({"args":["bash", "../makepkg"], "stream":self.debug})
+            if out[2] != 0:
+                print("Failed to create Clover install package!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
+                return return_dict
+            try:
+                pack = out[0].split("Package name: [39;49;00m")[1].split("\n")[0].replace("\n", "").replace("\r", "")
+            except:
+                pack = None
+            if pack != None and os.path.exists(pack):
+                print("\nBuilt {}!\n".format(pack))
+                return_dict["pkg"] = os.path.join(self.out, pack)
+        if iso:
+            print("Building Clover ISO...")
+            print(" - Patching makeiso to avoid opening resulting folder...")
+            try:
+                new_miso = ""
+                with open("../makeiso","r") as f:
+                    for line in f:
+                        if not "open sym" in line.lower():
+                            new_miso += line
+                with open("../makeiso","w") as f:
+                    f.write(new_miso)
+                print(" --> Patching Complete :)")
+            except:
+                print(" --> Patching failed :(")
+            print(" - Running makeiso...")
+            out = self.r.run({"args":["bash", "../makeiso"], "stream":self.debug})
+            if out[2] != 0:
+                print("Failed to create Clover ISO!")
+                if self.verbose:
+                    print(" - {}".format(out[1]))
+                return return_dict
+            try:
+                pack = "CloverISO-"+out[0].split("CloverISO-")[1].split("\n")[0].replace("\n", "").replace("\r", "")
+                print(pack)
+                iso_file = [x for x in os.listdir(pack) if x.lower().endswith(".iso") and not x.startswith(".")][0]
+                print(iso_file)
+                pack = os.path.join(self.out,pack,iso_file)
+                print(pack)
+            except Exception as e:
+                print(e)
+                pack = None
+            if pack != None and os.path.exists(pack):
+                print("\nBuilt CloverISO-{}!\n".format(os.path.basename(pack)))
+                return_dict["iso"] = pack
+        return return_dict

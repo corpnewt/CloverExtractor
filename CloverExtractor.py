@@ -635,19 +635,24 @@ class CloverExtractor:
             self.u.grab("Done!", timeout=5)
         return t_path
 
-    def build_clover(self):
+    def build_clover(self, pkg=True, iso=False):
         # Builds clover from soure - or attempts to...
         self.u.head("Building Clover")
         print("")
-        out = self.c.build_clover()
-        if not out:
-            print("Looks like something went wrong building Clover...")
-            return None
+        out = self.c.build_clover(pkg=pkg, iso=iso)
+        if pkg and not out.get("pkg",None):
+            print("Looks like something went wrong building the Clover pkg...")
+        if iso and not out.get("iso",None):
+            print("Looks like something went wrong building the Clover ISO...")
         # Let's copy clover into our Clover folder
         t_folder = self.check_clover_folder()
-        c_name = os.path.basename(out)
-        o_path = os.path.join(t_folder, c_name)
-        shutil.copy(out, o_path)
+        o_path   = None
+        for x in ["iso","pkg"]: # Make sure to always return the package last
+            if not out.get(x,None):
+                continue
+            c_name = os.path.basename(out[x])
+            o_path = os.path.join(t_folder, c_name)
+            shutil.copy(out[x], o_path)
         return o_path
 
     def auto_build(self, disk, archive):
@@ -765,7 +770,7 @@ class CloverExtractor:
         while True:
             self.u.head("Clover Extractor")
             print(" ")
-            height = 35
+            height = 37
             j = self.get_dl_info()
             c = self.get_clover_info()
             clover = bdmesg.get_clover_uuid()
@@ -810,16 +815,18 @@ class CloverExtractor:
                 height += 1
                 print("  BC. Booted Clover's EFI")
             print("")
-            print("D. Download Newest Clover (Dids' Repo)")
-            print("CC. Compile Clover From Source")
+            print("D.   Download Newest Clover (Dids' Repo)")
+            print("CC.  Compile Clover From Source")
+            print("CI.  Compile Clover ISO from Source")
+            print("CCI. Compile Clover PKG and ISO from Source")
             print("")
-            print("T. Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
-            print("U. Toggle Debugging (currently {})".format("Enabled" if self.settings.get("debug",False) else "Disabled"))
+            print("T.   Toggle Drivers64UEFI Updates (currently {})".format("Enabled" if self.settings.get("select_efi_drivers", True) else "Disabled"))
+            print("U.   Toggle Debugging (currently {})".format("Enabled" if self.settings.get("debug",False) else "Disabled"))
             print("")
-            print("W.  Wipe All Source Folders")
-            print("WC. Wipe Only Clover Source Folders")
-            print("WE. Wipe Only EFI Driver Source Folders")
-            print("WT. Wipe Only Clover Tools Source Folders")
+            print("W.   Wipe All Source Folders")
+            print("WC.  Wipe Only Clover Source Folders")
+            print("WE.  Wipe Only EFI Driver Source Folders")
+            print("WT.  Wipe Only Clover Tools Source Folders")
             print("")
             print("Q. Quit")
             print("")
@@ -855,6 +862,14 @@ class CloverExtractor:
                 self.clean_sources(self.tool_sources)
             elif menu.lower() == "cc":
                 out = self.build_clover()
+                if out:
+                    self.re.reveal(out)
+            elif menu.lower() == "ci":
+                out = self.build_clover(pkg=False,iso=True)
+                if out:
+                    self.re.reveal(out)
+            elif menu.lower() == "cci":
+                out = self.build_clover(pkg=True,iso=True)
                 if out:
                     self.re.reveal(out)
             elif menu.lower() == "bb":
