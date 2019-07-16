@@ -369,9 +369,13 @@ class CloverBuild:
                 pack = out[0].split("Package name: [39;49;00m")[1].split("\n")[0].replace("\n", "").replace("\r", "")
             except:
                 pack = None
+            os.chdir(self.out)
             if pack != None and os.path.exists(pack):
                 print("\nBuilt {}!\n".format(pack))
                 return_dict["pkg"] = os.path.join(self.out, pack)
+            else:
+                print("No Clover pkg found :(")
+        os.chdir(self.out)
         if iso:
             print("Building Clover ISO...")
             print(" - Patching makeiso to avoid opening resulting folder...")
@@ -402,4 +406,6 @@ class CloverBuild:
             if pack != None and os.path.exists(pack):
                 print("\nBuilt CloverISO-{}!\n".format(os.path.basename(pack)))
                 return_dict["iso"] = pack
+            else:
+                print("No Clover ISO located :(")
         return return_dict
