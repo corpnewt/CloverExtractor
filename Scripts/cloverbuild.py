@@ -332,7 +332,7 @@ class CloverBuild:
                 print(" - {}".format(out[1]))
             return return_dict
         # Build the EFI drivers
-        # self.build_efi_drivers()
+        self.build_efi_drivers()
         # Download EFI drivers
         print("Downloading other EFI drivers...")
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus_x64.efi"]:
@@ -395,13 +395,9 @@ class CloverBuild:
                 return return_dict
             try:
                 pack = "CloverISO-"+out[0].split("CloverISO-")[1].split("\n")[0].replace("\n", "").replace("\r", "")
-                print(pack)
                 iso_file = [x for x in os.listdir(pack) if x.lower().endswith(".iso") and not x.startswith(".")][0]
-                print(iso_file)
                 pack = os.path.join(self.out,pack,iso_file)
-                print(pack)
-            except Exception as e:
-                print(e)
+            except:
                 pack = None
             if pack != None and os.path.exists(pack):
                 print("\nBuilt CloverISO-{}!\n".format(os.path.basename(pack)))
