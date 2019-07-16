@@ -120,10 +120,11 @@ class CloverBuild:
         # Already cloned once - just update
         print("Updating Clover...")
         cwd = os.getcwd()
-        os.chdir(self.udk_path)
+        os.chdir(self.c_path)
         rev = self.get_clover_revision()
         if not rev:
             print("No Clover revision located!")
+            os.chdir(cwd)
             return False
         out = self.r.run([
             # {"args":["svn", "up", "-r{}".format(rev)], "stream":self.debug},
@@ -152,6 +153,7 @@ class CloverBuild:
             rev = out.lower().split("revision: ")[1].split("\n")[0]
         except:
             rev = ""
+        os.chdir(cwd)
         if not len(rev):
             return None
         return rev
@@ -245,6 +247,7 @@ class CloverBuild:
                     print(" --> {}".format(dname))
                 except:
                     print("Failed to copy {}!".format(dname))
+        os.chdir(cwd)
 
     def build_clover(self, pkg=True, iso=False):
         # Preliminary updates
@@ -272,6 +275,7 @@ class CloverBuild:
             print("Failed to setup UDK!")
             if self.verbose:
                 print(" - {}".format(out[1]))
+            os.chdir(cwd)
             return return_dict
         # Build gettext, mtoc, and nasm (if needed)
         os.chdir(self.c_path)
@@ -282,6 +286,7 @@ class CloverBuild:
                 print("Failed to build gettext!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
+                os.chdir(cwd)
                 return return_dict
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "mtoc.NEW")):
             print(" - Building mtoc...")
@@ -290,6 +295,7 @@ class CloverBuild:
                 print("Failed to build mtoc!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
+                os.chdir(cwd)
                 return return_dict
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "nasm")):
             print(" - Building nasm...")
@@ -298,12 +304,14 @@ class CloverBuild:
                 print("Failed to build nasm!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
+                os.chdir(cwd)
                 return return_dict
         # Install UDK patches
         print("Installing UDK patches...")
         out = self.r.run({"args":"cp -R \"{}\"/Patches_for_UDK2018/* ../".format(self.c_path), "stream":self.debug, "shell":True})
         if out[2] != 0:
             print("Failed to install UDK patches!")
+            os.chdir(cwd)
             return return_dict
         # ApfsDriverLoader is built, and replaced - let's avoid building it here
         print("Patching Clover.dsc to remove ApfsDriverLoader (we build it manually)...")
@@ -330,6 +338,7 @@ class CloverBuild:
             print("Failed to clean Clover!")
             if self.verbose:
                 print(" - {}".format(out[1]))
+            os.chdir(cwd)
             return return_dict
         # Build the EFI drivers
         self.build_efi_drivers()
@@ -367,7 +376,6 @@ class CloverBuild:
                 print("Failed to create Clover install package!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
-                return return_dict
             try:
                 pack = out[0].split("Package name: [39;49;00m")[1].split("\n")[0].replace("\n", "").replace("\r", "")
             except:
@@ -399,7 +407,6 @@ class CloverBuild:
                 print("Failed to create Clover ISO!")
                 if self.verbose:
                     print(" - {}".format(out[1]))
-                return return_dict
             try:
                 pack = "CloverISO-"+out[0].split("CloverISO-")[1].split("\n")[0].replace("\n", "").replace("\r", "")
                 iso_file = [x for x in os.listdir(pack) if x.lower().endswith(".iso") and not x.startswith(".")][0]
@@ -411,4 +418,5 @@ class CloverBuild:
                 return_dict["iso"] = pack
             else:
                 print("No Clover ISO located :(")
+        os.chdir(cwd)
         return return_dict
