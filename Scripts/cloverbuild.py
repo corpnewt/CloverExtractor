@@ -343,6 +343,9 @@ class CloverBuild:
         for e in ["apfs.efi", "NTFS.efi", "HFSPlus.efi"]:
             print(" --> {}".format(e))
             shutil.copy(os.path.join(self.ce_path, "UEFI", "FileSystem", e), os.path.join(self.ce_path, "BIOS", "FileSystem", e))
+        # Ensure the sym folder exists before we chdir into it
+        if not os.path.exists(self.out):
+            os.makedirs(self.out)
         os.chdir(self.out)
         if pkg:
             print("Building Clover install package...")
