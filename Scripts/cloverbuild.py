@@ -184,6 +184,9 @@ class CloverBuild:
             # Check for updates
             self.r.run({"args":["git", "reset", "--hard"],"stream":self.debug})
             self.r.run({"args":["git", "pull"], "stream":self.debug})
+            if driver.get("commit",None):
+                print("Resetting to {} commit".format(driver.get("commit")))
+                self.r.run({"args":["git", "reset", "--hard", driver.get("commit")],"stream":self.debug})
             # Chmod
             self.r.run({"args":["chmod", "+x", driver["run"]]})
             # Run it
