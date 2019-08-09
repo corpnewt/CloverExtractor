@@ -2,7 +2,7 @@
     {
         "repo" : "https://github.com/acidanthera/AptioFixPkg",
         "path" : "AptioFixPkg",
-        "commit": "32c25af9f2b4e1a452c1ec3847b8ae58ae29f2b8",
+        "commit": "fb63fcb3d6d7163e517a67ba04da7d1315fc16f3",
         "out"  : "AptioFixPkg/UDK/Build/AptioFixPkg/RELEASE_XCODE5/X64",
         "name" : ".efi",
         "sa"   : ".zip",
