@@ -20,7 +20,8 @@ class CloverBuild:
             os.mkdir(self.source)
         # Setup the UDK repo
         self.udk_repo   = kwargs.get("udk_repo", "https://github.com/tianocore/edk2")
-        self.udk_branch = kwargs.get("udk_branch", "UDK2018")
+        # self.udk_branch = kwargs.get("udk_branch", "UDK2018")
+        self.udk_branch = kwargs.get("udk_branch", "edk2-stable201905")
         self.udk_path   = kwargs.get("udk_path", "UDK2018")
         self.udk_path   = os.path.join(self.source, self.udk_path)
         # Setup the Clover repo
@@ -165,10 +166,10 @@ class CloverBuild:
             if not all(key in driver for key in ["repo", "path", "out", "name", "run", "lang", "sa"]):
                 print("Driver missing info - skipping...")
                 raise Exception()
-            print("Building {}...".format(driver["path"]))
+            print("{}...".format(driver["path"]))
             if not os.path.exists(os.path.join(self.source, driver["path"], ".git")):
                 # Clone it
-                print("Checking out a shiny new copy of {}".format(driver["path"]))
+                print(" - Checking out a shiny new copy of {}".format(driver["path"]))
                 out = self.r.run({"args":["git", "clone", driver["repo"]], "stream":self.debug})
                 if out[2] != 0:
                     print("Error cloning!")
@@ -185,10 +186,25 @@ class CloverBuild:
             self.r.run({"args":["git", "reset", "--hard"],"stream":self.debug})
             self.r.run({"args":["git", "pull"], "stream":self.debug})
             if driver.get("commit",None):
-                print("Resetting to {} commit".format(driver.get("commit")))
+                print(" - Resetting to {} commit".format(driver.get("commit")))
                 self.r.run({"args":["git", "reset", "--hard", driver.get("commit")],"stream":self.debug})
             # Chmod
             self.r.run({"args":["chmod", "+x", driver["run"]]})
+            # Prerun
+            if driver.get("prerun",None):
+                print(" - Running preliminary tasks...")
+                tasks = driver.get("prerun",[])
+                if not isinstance(tasks,list):
+                    tasks = [tasks]
+                for x,y in enumerate(tasks):
+                    print(" --> {} of {}:  {}".format(x+1,len(tasks),y.get("name","Unnamed")))
+                    out = self.r.run({"args":y.get("run",[])})
+                    if out[2] != 0:
+                        print(" ----> Failed!")
+                        if self.verbose:
+                            print(" ------> {}".format(out[1]))
+                        raise Exception()
+            print(" - Building...")
             # Run it
             out = self.r.run({"args":[driver["lang"], driver["run"]], "stream":self.debug})
             if out[2] != 0:
@@ -222,6 +238,7 @@ class CloverBuild:
     def build_efi_drivers(self):
         output = []
         cwd = os.getcwd()
+        print("Building EFI drivers...")
         for driver in self.efi_drivers:
             out = self.build_efi_driver(driver, "name")
             if not out:
@@ -258,6 +275,18 @@ class CloverBuild:
         if not self.update_udk() or not self.update_clover():
             # Updates failed :(
             return return_dict
+        cwd = os.getcwd()
+        os.chdir(self.c_path)
+        # Install UDK patches
+        for x in ("Patches_for_UDK2018","Patches_for_EDK2"):
+            if not os.path.exists(os.path.join(self.c_path,x)):
+                continue
+            print("Installing {} patches...".format(x.split("_")[-1]))
+            out = self.r.run({"args":"cp -R \"{}\"/{}/* ../".format(self.c_path,x), "stream":self.debug, "shell":True})
+            if out[2] != 0:
+                print("Failed to install {} patches!".format(x.split("_")[-1]))
+                os.chdir(cwd)
+                return return_dict
         # Compile base tools
         print("Compiling base tools...")
         out = self.r.run({"args":["make", "-C", os.path.join(self.udk_path, "BaseTools", "Source", "C")], "stream":self.debug})
@@ -268,7 +297,6 @@ class CloverBuild:
             return return_dict
         # Setup UDK
         print("Setting up UDK...")
-        cwd = os.getcwd()
         os.chdir(self.udk_path)
         # Let's make sure we set our toolchain directory and main tool dir
         os.environ["TOOLCHAIN_DIR"] = os.path.join(self.source, "opt", "local")
@@ -309,13 +337,6 @@ class CloverBuild:
                     print(" - {}".format(out[1]))
                 os.chdir(cwd)
                 return return_dict
-        # Install UDK patches
-        print("Installing UDK patches...")
-        out = self.r.run({"args":"cp -R \"{}\"/Patches_for_UDK2018/* ../".format(self.c_path), "stream":self.debug, "shell":True})
-        if out[2] != 0:
-            print("Failed to install UDK patches!")
-            os.chdir(cwd)
-            return return_dict
         # ApfsDriverLoader is built, and replaced - let's avoid building it here
         print("Patching Clover.dsc to remove ApfsDriverLoader (we build it manually)...")
         apfs_path = "Clover/FileSystems/ApfsDriverLoader/ApfsDriverLoader.inf"
