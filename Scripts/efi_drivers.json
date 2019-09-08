@@ -3,6 +3,18 @@
         "repo" : "https://github.com/acidanthera/AptioFixPkg",
         "path" : "AptioFixPkg",
         "commit": "fb63fcb3d6d7163e517a67ba04da7d1315fc16f3",
+        "prerun": [
+            {
+                "name": "Reset OcSupportPkg to 958ed863ae129300aee0f37f597a03a55cb39b6c",
+                "run": [
+                    "sed",
+                    "-i",
+                    "",
+                    "s#updaterepo \"https://github\\.com/acidanthera/OcSupportPkg\" OcSupportPkg master || exit 1#rm -rf OcSupportPkg \\&\\& git clone \"https://github\\.com/acidanthera/OcSupportPkg\" \\&\\& cd OcSupportPkg \\&\\& git reset --hard 958ed863ae129300aee0f37f597a03a55cb39b6c \\&\\& cd \\.\\./#g",
+                    "macbuild.tool"
+                ]
+            }
+        ],
         "out"  : "AptioFixPkg/UDK/Build/AptioFixPkg/RELEASE_XCODE5/X64",
         "name" : ".efi",
         "sa"   : ".zip",
