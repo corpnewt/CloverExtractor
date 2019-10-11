@@ -307,12 +307,12 @@ class CloverBuild:
         self.build_efi_drivers()
         # Download EFI drivers
         print("Downloading other EFI drivers...")
-        for e in ["apfs.efi", "NTFS.efi", "HFSPlus_x64.efi"]:
+        for e in ["NTFS.efi", "HFSPlus_x64.efi"]:
             print(" --> {}".format(e.replace("_x64", "")))
             self.r.run({"args":"curl -sSLk https://github.com/Micky1979/Build_Clover/raw/work/Files/{} > \"{}\"/UEFI/FileSystem/{}".format(e, self.ce_path, e.replace("_x64", "")), "shell":True})
         # Copy over the other EFI drivers
         print("Copying other EFI drivers...")
-        for e in ["apfs.efi", "NTFS.efi", "HFSPlus.efi"]:
+        for e in ["NTFS.efi", "HFSPlus.efi"]:
             print(" --> {}".format(e))
             shutil.copy(os.path.join(self.ce_path, "UEFI", "FileSystem", e), os.path.join(self.ce_path, "BIOS", "FileSystem", e))
         # Ensure the sym folder exists before we chdir into it
