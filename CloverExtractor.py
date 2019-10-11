@@ -17,7 +17,7 @@ class CloverExtractor:
             os.mkdir(self.c_source)
         self.c  = cloverbuild.CloverBuild(source=self.c_source)
         self.clover_url = "https://api.github.com/repos/dids/clover-builder/releases/latest"
-        self.clover_repo = "https://svn.code.sf.net/p/cloverefiboot/code"
+        self.clover_repo = "https://github.com/CloverHackyColor/CloverBootloader"
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
@@ -561,11 +561,10 @@ class CloverExtractor:
 
     def get_clover_info(self):
         # Returns the latest Clover version
-        clover_data = self.dl.get_string(self.clover_repo, False)
-        try:
-            c = clover_data.lower().split("revision ")[1].split(":")[0]
-        except:
-            c = "Unknown"
+        clover_data = self.r.run({"args":["git","ls-remote",self.clover_repo]})[0].strip()
+        try: c = clover_data.split("/")[-1]
+        except: c = "Unknown"
+        c = "Unknown" if not all(x.isalpha for x in c) else c
         return c
 
     def check_clover_folder(self):
