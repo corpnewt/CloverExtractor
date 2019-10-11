@@ -18,16 +18,10 @@ class CloverBuild:
         self.verbose    = kwargs.get("verbose",False)
         if not os.path.exists(self.source):
             os.mkdir(self.source)
-        # Setup the UDK repo
-        self.udk_repo   = kwargs.get("udk_repo", "https://github.com/tianocore/edk2")
-        # self.udk_branch = kwargs.get("udk_branch", "UDK2018")
-        self.udk_branch = kwargs.get("udk_branch", "edk2-stable201905")
-        self.udk_path   = kwargs.get("udk_path", "UDK2018")
-        self.udk_path   = os.path.join(self.source, self.udk_path)
         # Setup the Clover repo
-        self.c_repo     = kwargs.get("clover_repo", "https://svn.code.sf.net/p/cloverefiboot/code")
+        self.c_repo     = kwargs.get("clover_repo", "https://github.com/CloverHackyColor/CloverBootloader")
         self.c_path     = kwargs.get("clover_path", "Clover")
-        self.c_path     = os.path.join(self.udk_path, self.c_path)
+        self.c_path     = os.path.join(self.source, self.c_path)
         # Setup the out dir
         self.out        = os.path.join(self.c_path, "CloverPackage", "sym")
         # Setup the Clover EFI path
@@ -77,42 +71,12 @@ class CloverBuild:
         # Debug options
         self.debug      = kwargs.get("debug", False)
 
-    def update_udk(self):
-        # Updates UDK2018 - or clones it if it doesn't exist
-        if not os.path.exists(os.path.join(self.udk_path, ".git")):
-            # Clone!
-            print("Checking out a shiny new copy of UDK2018...")
-            out = self.r.run({"args":["git", "clone", self.udk_repo, "-b", self.udk_branch, "--depth", "1", self.udk_path], "stream":self.debug})
-            if out[2] != 0:
-                print("Failed to check out UDK2018!")
-                if self.verbose:
-                    print(" - {}".format(out[1]))
-                return False
-        # Already cloned once - just update
-        print("Updating UDK2018...")
-        cwd = os.getcwd()
-        os.chdir(self.udk_path)
-        out = self.r.run([
-            {"args":["git", "reset", "--hard"],"stream":self.debug},
-            {"args":["git", "pull"], "stream":self.debug},
-            {"args":["git", "clean", "-fdx", "-e", "Clover/"], "stream":self.debug}
-        ], True)
-        os.chdir(cwd)
-        if type(out) is list:
-            out = out[-1]
-        if out[2] != 0:
-            print("Failed to update UDK2018!")
-            if self.verbose:
-                print(" - {}".format(out[1]))
-            return False
-        return True
-
     def update_clover(self):
         # Updates Clover - or clones it if it doesn't exist
-        if not os.path.exists(os.path.join(self.c_path, ".svn")):
+        if not os.path.exists(os.path.join(self.c_path, ".git")):
             # Clone!
             print("Checking out a shiny new copy of Clover...")
-            out = self.r.run({"args":["svn", "co", self.c_repo, self.c_path], "stream":self.debug})
+            out = self.r.run({"args":["git", "clone", self.c_repo, self.c_path], "stream":self.debug})
             if out[2] != 0:
                 print("Failed to check out Clover!")
                 if self.verbose:
@@ -128,10 +92,9 @@ class CloverBuild:
             os.chdir(cwd)
             return False
         out = self.r.run([
-            # {"args":["svn", "up", "-r{}".format(rev)], "stream":self.debug},
-            {"args":["svn", "up", "-rHEAD"], "stream":self.debug},
-            {"args":["svn", "revert", "-R", "."], "stream":self.debug},
-            {"args":["svn", "cleanup", "--remove-unversioned"], "stream":self.debug}
+            {"args":["git","fetch","--all"],"stream":self.debug},
+            {"args":["git","reset","--hard","origin/master"],"stream":self.debug},
+            {"args":["git","pull","origin","master"],"stream":self.debug}
         ], True)
         os.chdir(cwd)
         if type(out) is list:
@@ -145,18 +108,15 @@ class CloverBuild:
 
     def get_clover_revision(self):
         # Gets the revision from the Clover dir if exists - otherwise returns None
-        if not os.path.exists(os.path.join(self.c_path, ".svn")):
+        if not os.path.exists(os.path.join(self.c_path, ".git")):
             return None
         cwd = os.getcwd()
         os.chdir(self.c_path)
-        out = self.r.run({"args":["svn", "info"]})[0]
-        try:
-            rev = out.lower().split("revision: ")[1].split("\n")[0]
-        except:
-            rev = ""
+        commit = self.r.run({"args":["git","rev-list","--tags","--max-count=1"]})[0].strip()
+        if not commit: return None
+        rev = self.r.run({"args":["git","describe","--tags",commit]})[0].strip()
         os.chdir(cwd)
-        if not len(rev):
-            return None
+        if not rev: return None
         return rev
 
     def build_efi_driver(self, driver, ret = "out"):
@@ -272,44 +232,36 @@ class CloverBuild:
     def build_clover(self, pkg=True, iso=False):
         # Preliminary updates
         return_dict = {}
-        if not self.update_udk() or not self.update_clover():
+        if not self.update_clover():
             # Updates failed :(
             return return_dict
         cwd = os.getcwd()
         os.chdir(self.c_path)
-        # Install UDK patches
-        for x in ("Patches_for_UDK2018","Patches_for_EDK2"):
-            if not os.path.exists(os.path.join(self.c_path,x)):
-                continue
-            print("Installing {} patches...".format(x.split("_")[-1]))
-            out = self.r.run({"args":"cp -R \"{}\"/{}/* ../".format(self.c_path,x), "stream":self.debug, "shell":True})
-            if out[2] != 0:
-                print("Failed to install {} patches!".format(x.split("_")[-1]))
-                os.chdir(cwd)
-                return return_dict
-        # Compile base tools
-        print("Compiling base tools...")
-        out = self.r.run({"args":["make", "-C", os.path.join(self.udk_path, "BaseTools", "Source", "C")], "stream":self.debug})
-        if out[2] != 0:
-            print("Failed to compile base tools!")
-            if self.verbose:
-                print(" - {}".format(out[1]))
-            return return_dict
         # Setup UDK
-        print("Setting up UDK...")
-        os.chdir(self.udk_path)
-        # Let's make sure we set our toolchain directory and main tool dir
+        print("Setting up environment variables...")
+        os.chdir(self.c_path)
+        # Let's export our paths
         os.environ["TOOLCHAIN_DIR"] = os.path.join(self.source, "opt", "local")
         os.environ["DIR_MAIN"] = self.source
-        out = self.r.run({"args":["bash", "-c", "source edksetup.sh"], "stream":self.debug})
+        os.environ["DIR_TOOLS"] = os.path.join(self.source, "tools")
+        os.environ["DIR_DOWNLOADS"] = os.path.join(os.environ["DIR_TOOLS"],"download")
+        os.environ["DIR_LOGS"] = os.path.join(os.environ["DIR_TOOLS"],"logs")
+        os.environ["PREFIX"] = os.environ["TOOLCHAIN_DIR"]
+        os.environ["EDK_TOOLS_PATH"] = os.path.join(self.c_path,"BaseTools")
+        # The following is a bit hacky - but it includes the proper path for the "build" command
+        os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.join(self.c_path,"BaseTools","BinWrappers","PosixLike")
+        # Add the gettext prefix for our tools
+        os.environ["GETTEXT_PREFIX"] = os.environ["TOOLCHAIN_DIR"]
+        # Source edksetup.sh with BaseTools
+        out = self.r.run({"args":["bash", "-c", "source edksetup.sh BaseTools"], "stream":self.debug})
         if out[2] != 0:
-            print("Failed to setup UDK!")
+            print("Failed to setup environment!")
             if self.verbose:
                 print(" - {}".format(out[1]))
             os.chdir(cwd)
             return return_dict
         # Build gettext, mtoc, and nasm (if needed)
-        os.chdir(self.c_path)
+        # os.chdir(self.c_path)
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "gettext")):
             print(" - Building gettext...")
             out = self.r.run({"args":["bash", "buildgettext.sh"], "stream":self.debug})
@@ -337,29 +289,16 @@ class CloverBuild:
                     print(" - {}".format(out[1]))
                 os.chdir(cwd)
                 return return_dict
-        # ApfsDriverLoader is built, and replaced - let's avoid building it here
-        print("Patching Clover.dsc to remove ApfsDriverLoader (we build it manually)...")
-        apfs_path = "Clover/FileSystems/ApfsDriverLoader/ApfsDriverLoader.inf"
-        # Let's patch out their inclusion in Clover.dsc
-        with open(os.path.join(self.c_path,"Clover.dsc"),"r") as f:
-            clover_dsc = f.read()
-        lines = "\n".join([x for x in clover_dsc.split("\n") if not x.strip().lower().startswith(apfs_path.lower())])
-        if len(lines) == len(clover_dsc):
-            print(" - Did not find ApfsDriverLoader - no changes made")
-        else:
-            # Line count changed - we edited something
-            print(" - Found and omitted ApfsDriverLoader in Clover.dsc")
-            with open(os.path.join(self.c_path,"Clover.dsc"),"w") as f:
-                f.write(lines)
-        print("Cleaning Clover...")
+        # Build Clover itself
+        print("Building Clover...")
         out = self.r.run([
-            {"args":["bash", "ebuild.sh", "-cleanall"], "stream":self.debug},
-            {"args":["bash", "ebuild.sh", "-fr"], "stream":self.debug}
+            {"args":["bash", "ebuild.sh", "-fr","-mc","--no-usb","-D","NO_GRUB_DRIVERS_EMBEDDED","-t","XCODE8"], "stream":self.debug},
+            {"args":["bash", "ebuild.sh", "-fr","-D","NO_GRUB_DRIVERS_EMBEDDED","-t","XCODE8"], "stream":self.debug}
         ], True)
         if type(out) is list:
             out = out[-1]
         if out[2] != 0:
-            print("Failed to clean Clover!")
+            print("Failed to build Clover!")
             if self.verbose:
                 print(" - {}".format(out[1]))
             os.chdir(cwd)
