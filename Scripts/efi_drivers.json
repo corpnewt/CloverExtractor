@@ -23,8 +23,8 @@
         "lang" : "bash",
         "inst" : {
             "aptioinputfix.efi" : [
-                "[[ce_path]]/UEFI/FileVault2",
-                "[[ce_path]]/BIOS/FileVault2"
+                "[[ce_path]]/UEFI/HID",
+                "[[ce_path]]/BIOS"
             ],
             "aptiomemoryfix.efi" : [
                 "[[ce_path]]/UEFI/MemoryFix",
