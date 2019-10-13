@@ -569,7 +569,7 @@ class CloverExtractor:
 
     def check_clover_folder(self):
         t_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Clover")
-        if not os.path.isdir(t_folder):
+        if not os.path.exists(t_folder) or not os.path.isdir(t_folder):
             os.mkdir(t_folder)
         return t_folder
 
