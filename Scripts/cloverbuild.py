@@ -240,7 +240,8 @@ class CloverBuild:
         # Setup UDK
         print("Setting up environment variables...")
         os.chdir(self.c_path)
-        # Let's export our paths
+        # Let's export our paths - save the original values first
+        saved_env = [(x,os.environ.get(x,None)) for x in ("TOOLCHAIN_DIR","DIR_MAIN","DIR_TOOLS","DIR_DOWNLOADS","DIR_LOGS","PREFIX","EDK_TOOLS_PATH","PATH","GETTEXT_PREFIX")]
         os.environ["TOOLCHAIN_DIR"] = os.path.join(self.source, "opt", "local")
         os.environ["DIR_MAIN"] = self.source
         os.environ["DIR_TOOLS"] = os.path.join(self.source, "tools")
@@ -252,7 +253,7 @@ class CloverBuild:
         os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.join(self.c_path,"BaseTools","BinWrappers","PosixLike")
         # Add the gettext prefix for our tools
         os.environ["GETTEXT_PREFIX"] = os.environ["TOOLCHAIN_DIR"]
-        # Source edksetup.sh with BaseTools
+        # Source edksetup.sh with BaseTools - may be completely broken currently :/
         out = self.r.run({"args":["bash", "-c", "source edksetup.sh BaseTools"], "stream":self.debug})
         if out[2] != 0:
             print("Failed to setup environment!")
@@ -261,7 +262,6 @@ class CloverBuild:
             os.chdir(cwd)
             return return_dict
         # Build gettext, mtoc, and nasm (if needed)
-        # os.chdir(self.c_path)
         if not os.path.exists(os.path.join(self.source, "opt", "local", "bin", "gettext")):
             print(" - Building gettext...")
             out = self.r.run({"args":["bash", "buildgettext.sh"], "stream":self.debug})
@@ -304,6 +304,12 @@ class CloverBuild:
             os.chdir(cwd)
             return return_dict
         # Build the EFI drivers
+        # Dump the prior values in os.environ
+        for x,y in saved_env:
+            if y is None:
+                os.environ.pop(x,None)
+            else:
+                os.environ[x] = y
         self.build_efi_drivers()
         # Download EFI drivers
         print("Downloading other EFI drivers...")
