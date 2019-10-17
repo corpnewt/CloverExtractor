@@ -21,7 +21,7 @@ class CloverExtractor:
         self.u  = utils.Utils("CloverExtractor")
         self.clover = None
         self.efi    = None
-        self.clover_sources = ["udk2018"]
+        self.clover_sources = ["clover"]
         self.tool_sources   = ["opt","tools"]
         # Get the tools we need
         self.settings_file = os.path.join("Scripts", "settings.json")
