@@ -56,6 +56,10 @@
                 "[[ce_path]]/UEFI/FileVault2",
                 "[[ce_path]]/BIOS/FileVault2"
             ],
+            "fwruntimeservices.efi" : [
+                "[[ce_path]]/UEFI/MemoryFix",
+                "[[ce_path]]/BIOS"
+            ],
             "usbkbdxe.efi" : [
                 "[[ce_path]]/UEFI/HID",
                 "[[ce_path]]/BIOS/FileVault2"
@@ -92,6 +96,23 @@
             ],
             "audiodemo.efi" :[
                 "[[c_path]]/CloverPackage/CloverV2/EFI/CLOVER/tools"
+            ]
+        }
+    },
+    {
+        "repo" : "https://github.com/ReddestDream/OcQuirks",
+        "path" : "OcQuirks",
+        "display_name" : "OcQuirks (requires FwRuntimeServices from AppleSupportPkg)",
+        "out"  : "OcQuirks/UDK/Build/OcQuirks/RELEASE_XCODE5/X64",
+        "name" : ".efi",
+        "sa"   : ".zip",
+        "run"  : "macbuild.tool",
+        "env"  : {"FORCE_INSTALL":"1"},
+        "lang" : "bash",
+        "inst" : {
+            "ocquirks.efi" : [
+                "[[ce_path]]/UEFI/MemoryFix",
+                "[[ce_path]]/BIOS"
             ]
         }
     }
