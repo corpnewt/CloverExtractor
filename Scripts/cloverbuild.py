@@ -112,12 +112,9 @@ class CloverBuild:
             return None
         cwd = os.getcwd()
         os.chdir(self.c_path)
-        commit = self.r.run({"args":["git","rev-list","--tags","--max-count=1"]})[0].strip()
-        if not commit: return None
-        rev = self.r.run({"args":["git","describe","--tags",commit]})[0].strip()
+        rev = self.r.run({"args":["git","describe","--tags","--abbrev=0"]})[0].strip()
         os.chdir(cwd)
-        if not rev: return None
-        return rev
+        return rev if rev else None
 
     def build_efi_driver(self, driver, ret = "out"):
         cwd = os.getcwd()
