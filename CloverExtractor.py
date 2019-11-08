@@ -690,7 +690,7 @@ class CloverExtractor:
         count = 0
         for d in self.c.efi_drivers:
             count += 1
-            print("{}. {}".format(count, d.get("path", "Unknown")))
+            print("{}. {}".format(count, d.get("display_name",d.get("path", "Unknown"))))
         print("")
         print("A. Build All")
         print("M. Main Menu")
